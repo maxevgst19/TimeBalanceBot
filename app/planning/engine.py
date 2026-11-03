@@ -132,6 +132,10 @@ def occurrences(event: EventRec, range_start: datetime, range_end: datetime) -> 
     last_day = (range_end - timedelta(microseconds=1)).date()
     while day <= last_day:
         if day.isoweekday() in event.weekdays and (event.until is None or day <= event.until):
+            # Серия начинается не раньше самой первой даты занятия.
+            if day < event.starts_at.date():
+                day += timedelta(days=1)
+                continue
             start = datetime.combine(day, clock, tzinfo=tz)
             end = start + duration
             if start < range_end and end > range_start:

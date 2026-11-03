@@ -57,9 +57,19 @@
 ```bash
 pip install -r requirements.txt
 
-cp .env.example .env      # вписать MAX_BOT_TOKEN и MINI_APP_URL
+# Linux / macOS
+cp .env.example .env
+# Windows PowerShell
+Copy-Item .env.example .env
+
+# вписать в .env MAX_BOT_TOKEN и MINI_APP_URL
 python code.py            # http://127.0.0.1:8000
 ```
+
+Файл `.env` в корне проекта загружается автоматически при старте
+(`Settings.from_env()` → `python-dotenv`), отдельных переменных окружения
+задавать не нужно. При этом **реальные переменные окружения имеют приоритет**:
+если `MAX_BOT_TOKEN` уже задан в системе, значение из `.env` его не перезапишет.
 
 Swagger UI — `http://127.0.0.1:8000/docs`, спецификация — `/openapi.json`
 (пути относительны к `/api/v1`, как в `openapi.yaml`).
@@ -72,6 +82,9 @@ Swagger UI — `http://127.0.0.1:8000/docs`, спецификация — `/open
 - `MINI_APP_URL` — ссылка, которую бот отдаёт по кнопке;
 - `DAY_START` / `профиль пользователя.day_end` — границы учебного дня;
 - `TIMEBALANCE_DB` — файл базы SQLite.
+
+Всё это можно задать либо в `.env`, либо настоящими переменными окружения —
+работает и то, и другое.
 
 **Токен и другие секреты в репозиторий не попадают:** `.env` в `.gitignore`,
 `.env.example` содержит только плейсхолдеры.

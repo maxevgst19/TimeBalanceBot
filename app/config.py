@@ -60,6 +60,14 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
+        # `.env` в корне проекта подхватывается автоматически; реальные переменные
+        # окружения имеют приоритет (override=False у load_dotenv).
+        try:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+        except ImportError:  # python-dotenv не установлен — работаем как раньше
+            pass
         bot_token = _env("MAX_BOT_TOKEN", "")
         return cls(
             bot_token=bot_token,

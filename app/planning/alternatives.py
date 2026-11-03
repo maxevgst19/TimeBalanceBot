@@ -36,7 +36,7 @@ class Candidate:
     remaining: int
 
 
-def _dry_run(
+def _rebuild(
     events: list[EventRec],
     tasks: list[TaskRec],
     boundaries: Boundaries,
@@ -44,14 +44,56 @@ def _dry_run(
     date_to: date,
     now: datetime,
     revision: str,
-    conflict_id: str,
-) -> int:
-    """Считает оставшийся дефицит конфликта после «применения» варианта."""
-    plan = build_plan(events, tasks, boundaries, date_from, date_to, now, revision)
-    for conflict in plan.conflicts:
-        if conflict.id == conflict_id:
-            return conflict.shortage_min
-    return 0
+) -> PlanResult:
+    """План после «применения» варианта — считается на копии данных."""
+    return build_plan(events, tasks, boundaries, date_from, date_to, now, revision)
+
+
+def _overlap_total(plan: PlanResult) -> int:
+    return sum(item.shortage_min for item in plan.conflicts if item.type == "overlap")
+
+
+def _unplaced_total(plan: PlanResult) -> int:
+    return sum(plan.unplaced.values())
+
+
+def residual_deficit(plan: PlanResult, conflict: Conflict, original: PlanResult) -> int:
+    """Сколько дефицита осталось относительно открытого конфликта.
+
+    Для пересечений идентификатор **ненадёжен**: он собирается из времени
+    начала и конца, поэтому сдвинутое событие даёт новый ``conflict_id``, даже
+    если пересечение никуда не делось. Прямой поиск по id дал бы остаток 0 и
+    показал ложное улучшение. Поэтому для ``overlap`` сравниваются не
+    идентификаторы, а суммарные минуты пересечений в плане.
+
+    Проблемы, которых не было в исходном плане, прибавляются обратно: перенос
+    события не должен выглядеть улучшением, если он убрал дефицит задач, но
+    породил новое пересечение.
+    """
+    if conflict.type == "overlap":
+        return _overlap_total(plan) + max(
+            0, _unplaced_total(plan) - _unplaced_total(original)
+        )
+
+    core = next(
+        (item.shortage_min for item in plan.conflicts if item.id == conflict.id), 0
+    )
+
+    # Чужие задачи: ядро конфликта покрывает только свои, а остальные могли
+    # вырасти из-за переноса события.
+    conflict_tasks = set(conflict.affected_task_ids)
+    others_now = sum(
+        value for key, value in plan.unplaced.items() if key not in conflict_tasks
+    )
+    others_before = sum(
+        value for key, value in original.unplaced.items() if key not in conflict_tasks
+    )
+
+    return (
+        core
+        + max(0, others_now - others_before)
+        + max(0, _overlap_total(plan) - _overlap_total(original))
+    )
 
 
 def _shift_event(events: list[EventRec], event_id: str, **delta: Any) -> list[EventRec] | None:
@@ -111,12 +153,12 @@ def _evaluate(
     date_to: date,
     now: datetime,
     revision: str,
-    conflict_id: str,
+    conflict: Conflict,
+    original: PlanResult,
     baseline: int,
 ) -> Candidate | None:
-    remaining = _dry_run(
-        events, tasks, boundaries, date_from, date_to, now, revision, conflict_id
-    )
+    plan = _rebuild(events, tasks, boundaries, date_from, date_to, now, revision)
+    remaining = residual_deficit(plan, conflict, original)
     if remaining >= baseline:
         return None  # вариант не помогает — не показываем
     return Candidate(
@@ -138,6 +180,7 @@ def generate_alternatives(
     date_to: date,
     now: datetime,
     revision: str,
+    original: PlanResult,
 ) -> list[Candidate]:
     baseline = conflict.shortage_min
     candidates: list[Candidate] = []
@@ -145,13 +188,15 @@ def generate_alternatives(
     if conflict.type == "overlap":
         candidates.extend(
             _overlap_variants(
-                conflict, events, tasks, boundaries, date_from, date_to, now, revision, baseline
+                conflict, events, tasks, boundaries, date_from, date_to,
+                now, revision, baseline, original,
             )
         )
     else:
         candidates.extend(
             _shortage_variants(
-                conflict, events, tasks, boundaries, date_from, date_to, now, revision, baseline
+                conflict, events, tasks, boundaries, date_from, date_to,
+                now, revision, baseline, original,
             )
         )
 
@@ -189,6 +234,7 @@ def _shortage_variants(
     now: datetime,
     revision: str,
     baseline: int,
+    original: PlanResult,
 ) -> list[Candidate]:
     variants: list[Candidate] = []
     by_id = {task.id: task for task in tasks}
@@ -220,7 +266,8 @@ def _shortage_variants(
             date_to=date_to,
             now=now,
             revision=revision,
-            conflict_id=conflict.id,
+            conflict=conflict,
+            original=original,
             baseline=baseline,
         )
         if candidate:
@@ -255,7 +302,8 @@ def _shortage_variants(
                 date_to=date_to,
                 now=now,
                 revision=revision,
-                conflict_id=conflict.id,
+                conflict=conflict,
+                original=original,
                 baseline=baseline,
             )
             if candidate:
@@ -295,7 +343,8 @@ def _shortage_variants(
                 date_to=date_to,
                 now=now,
                 revision=revision,
-                conflict_id=conflict.id,
+                conflict=conflict,
+                original=original,
                 baseline=baseline,
             )
             if candidate:
@@ -315,6 +364,7 @@ def _overlap_variants(
     now: datetime,
     revision: str,
     baseline: int,
+    original: PlanResult,
 ) -> list[Candidate]:
     variants: list[Candidate] = []
     by_id = {event.id: event for event in events}
@@ -350,7 +400,8 @@ def _overlap_variants(
                 date_to=date_to,
                 now=now,
                 revision=revision,
-                conflict_id=conflict.id,
+                conflict=conflict,
+                original=original,
                 baseline=baseline,
             )
             if candidate:
@@ -386,7 +437,8 @@ def _overlap_variants(
                     date_to=date_to,
                     now=now,
                     revision=revision,
-                    conflict_id=conflict.id,
+                    conflict=conflict,
+                    original=original,
                     baseline=baseline,
                 )
                 if candidate:

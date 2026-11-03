@@ -98,6 +98,7 @@ async def build_alternatives(
         date_to=cached.date_to,
         now=cached.plan.now or datetime.now(tz),
         revision=cached.plan.revision,
+        original=cached.plan,
     )
 
     result = []
