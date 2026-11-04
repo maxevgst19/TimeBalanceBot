@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F7F8F6">
+<title>TimeBalance</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ================= СЕГОДНЯ ================= -->
+  <section id="screen-today">
+    <header class="screen-head">
+      <p class="screen-kicker" id="todayKicker">Сегодня</p>
+      <h1 id="todayDate">—</h1>
+      <p class="screen-sub" id="todayGreeting">Соберём день так, чтобы всё поместилось.</p>
+    </header>
+
+    <div class="stack">
+      <article class="card now-card" id="nowCard" aria-live="polite"></article>
+      <article class="conflict-card" id="conflictCard" hidden></article>
+    </div>
+
+    <h2 class="section-title">Шкала дня <span id="timelineRange"></span></h2>
+    <div class="card timeline-card">
+      <ul class="legend" aria-hidden="true">
+        <li><i class="dot" style="background:var(--school)"></i>Школа</li>
+        <li><i class="dot" style="background:var(--extra)"></i>Кружки</li>
+        <li><i class="dot" style="background:var(--task)"></i>Задания</li>
+        <li><i class="dot" style="background:var(--rest)"></i>Отдых</li>
+        <li><i class="dot" style="background:var(--travel)"></i>Дорога</li>
+      </ul>
+      <div class="timeline" id="timeline" role="list" aria-label="Расписание дня"></div>
+    </div>
+
+    <h2 class="section-title">Итог дня</h2>
+    <dl class="summary" id="summary"></dl>
+  </section>
+
+  <!-- ================= НЕДЕЛЯ ================= -->
+  <section id="screen-week" hidden>
+    <header class="screen-head">
+      <p class="screen-kicker">7 дней</p>
+      <h1>Неделя</h1>
+      <p class="screen-sub">Где нагрузка выше и сколько времени остаётся.</p>
+    </header>
+    <div class="week-list" id="weekList"></div>
+  </section>
+
+  <!-- ================= ПЛАН Б ================= -->
+  <section id="screen-planb" hidden>
+    <button class="back-btn" id="planbBack" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Назад к дню
+    </button>
+    <header class="screen-head">
+      <p class="screen-kicker">План Б</p>
+      <h1>Как всё успеть</h1>
+      <p class="screen-sub">Посмотри последствия до того, как выбрать.</p>
+    </header>
+    <div class="stack" id="planbBody"></div>
+  </section>
+
+  <!-- ================= ПРОФИЛЬ ================= -->
+  <section id="screen-profile" hidden>
+    <header class="screen-head">
+      <p class="screen-kicker">Настройки</p>
+      <h1>Профиль</h1>
+      <p class="screen-sub">Границы дня и отдых, которые TimeBalance защищает.</p>
+    </header>
+
+    <div class="stack">
+      <div class="card settings">
+        <div class="field">
+          <label for="setDayEnd">Учебные дела заканчиваются</label>
+          <input class="input" type="time" id="setDayEnd" value="21:00">
+          <p class="hint">После этого времени задания не ставятся.</p>
+        </div>
+        <div class="field">
+          <label for="setBreak">Перерыв после школы, минут</label>
+          <input class="input" type="number" id="setBreak" min="0" max="180" step="5" inputmode="numeric" value="30">
+          <p class="hint">Отдых остаётся на шкале отдельным блоком.</p>
+        </div>
+        <div class="switch-row">
+          <label class="field-label" for="setNotify">Уведомления в чате</label>
+          <span class="switch">
+            <input type="checkbox" id="setNotify" checked>
+            <span aria-hidden="true"></span>
+          </span>
+        </div>
+        <button class="btn btn-primary btn-block" id="saveSettings" type="button">Сохранить</button>
+      </div>
+
+      <div class="card settings">
+        <div class="field">
+          <span class="field-label">Данные</span>
+          <p class="hint">Сброс удалит добавленные дела и настройки на этом устройстве.</p>
+        </div>
+        <button class="btn btn-outline btn-block" id="resetData" type="button">Сбросить данные</button>
+        <div class="reset-confirm" id="resetConfirm" hidden>
+          <p class="reset-confirm-text">Удалить все дела и настройки? Отменить это будет нельзя.</p>
+          <div class="reset-confirm-actions">
+            <button class="btn btn-danger" id="resetConfirmYes" type="button">Да, сбросить</button>
+            <button class="btn btn-outline" id="resetCancel" type="button">Отмена</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card about">
+        TimeBalance — учебный проект. Приложение показывает, помещаются ли дела
+        в реальный день, и предлагает безопасные варианты перестройки плана.
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="bottom-nav" aria-label="Основная навигация">
+  <div class="nav-inner">
+    <button class="nav-btn" type="button" data-screen="today" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="15.5" r="1.6" fill="currentColor"/>
+      </svg>
+      Сегодня
+    </button>
+    <button class="nav-btn" type="button" data-screen="week">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="17" rx="3" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M3 9h18M9 9v12M15 9v12" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      Неделя
+    </button>
+    <button class="nav-btn" type="button" data-screen="profile">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      Профиль
+    </button>
+    <button class="nav-add" id="fab" type="button" aria-label="Добавить дело">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ================= ЛИСТ ДОБАВЛЕНИЯ ================= -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheet">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="sheetTitle">Новое дело</h2>
+      <button class="icon-btn" id="sheetClose" type="button" aria-label="Закрыть">×</button>
+    </div>
+
+    <div class="seg" role="group" aria-label="Тип дела">
+      <button class="seg-btn" id="tabTask" type="button" aria-pressed="true">Задание</button>
+      <button class="seg-btn" id="tabEvent" type="button" aria-pressed="false">Занятие</button>
+    </div>
+
+    <form id="addForm" novalidate>
+      <!-- Задание -->
+      <div class="fields" id="fieldsTask">
+        <div class="field">
+          <label for="taskTitle">Название</label>
+          <input class="input" id="taskTitle" type="text" maxlength="120" autocomplete="off"
+                 placeholder="Напр.: алгебра, 12 номеров" aria-describedby="taskTitleErr">
+          <p class="field-error" id="taskTitleErr"></p>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label for="taskDue">Срок</label>
+            <input class="input" id="taskDue" type="date" aria-describedby="taskDueErr">
+            <p class="field-error" id="taskDueErr"></p>
+          </div>
+          <div class="field">
+            <label for="taskEst">Длительность, мин</label>
+            <input class="input" id="taskEst" type="number" min="5" max="480" step="5"
+                   inputmode="numeric" value="45" aria-describedby="taskEstErr">
+            <p class="field-error" id="taskEstErr"></p>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label">Приоритет</span>
+          <div class="chips" id="priorityChips" role="group" aria-label="Приоритет">
+            <button class="chip" type="button" data-priority="normal" aria-pressed="true">Обычный</button>
+            <button class="chip" type="button" data-priority="high" aria-pressed="false">Срочно</button>
+          </div>
+        </div>
+        <label class="switch-row" for="taskSplit">
+          <span class="field-label">Можно разделить на части</span>
+          <span class="switch">
+            <input type="checkbox" id="taskSplit" checked>
+            <span aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Занятие -->
+      <div class="fields" id="fieldsEvent" hidden>
+        <div class="field">
+          <label for="eventTitle">Название</label>
+          <input class="input" id="eventTitle" type="text" maxlength="120" autocomplete="off"
+                 placeholder="Напр.: кружок по физике" aria-describedby="eventTitleErr">
+          <p class="field-error" id="eventTitleErr"></p>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label for="eventStart">Начало</label>
+            <input class="input" id="eventStart" type="time" value="16:00" aria-describedby="eventTimeErr">
+          </div>
+          <div class="field">
+            <label for="eventEnd">Конец</label>
+            <input class="input" id="eventEnd" type="time" value="17:30">
+          </div>
+        </div>
+        <p class="field-error" id="eventTimeErr"></p>
+        <div class="field">
+          <label for="eventCategory">Категория</label>
+          <select class="input" id="eventCategory">
+            <option value="extra">Кружок или секция</option>
+            <option value="school">Школа</option>
+            <option value="personal">Личное</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="eventTravel">Дорога в одну сторону, мин</label>
+          <input class="input" id="eventTravel" type="number" min="0" max="240" step="5"
+                 inputmode="numeric" value="0">
+        </div>
+        <div class="field">
+          <label for="eventDate">Дата</label>
+          <input class="input" id="eventDate" type="date">
+          <p class="hint">Занятие повторится в этот день недели.</p>
+        </div>
+        <label class="switch-row" for="eventMovable">
+          <span class="field-label">Можно перенести</span>
+          <span class="switch">
+            <input type="checkbox" id="eventMovable">
+            <span aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="form-foot">
+        <button class="btn btn-primary btn-block" type="submit" id="saveDeal">Сохранить</button>
+        <p class="form-note" id="formNote">Три поля — и дело появится на шкале.</p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js" defer></script>
+</body>
+</html>

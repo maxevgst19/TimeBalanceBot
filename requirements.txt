@@ -1,0 +1,5 @@
+httpx>=0.27
+certifi>=2024.2
+python-dotenv>=1.0
+rjsmin>=1.2
+rcssmin>=1.1

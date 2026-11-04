@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F7F8F6">
+<title>TimeBalance</title>
+<style>:root{--canvas:#F7F8F6;--surface:#FFFFFF;--ink:#1E2725;--muted:#64716D;--line:#E3E9E5;--primary:#326B5C;--primary-soft:#E5F3ED;--school:#3C6F9A;--extra:#7A60A8;--task:#B67535;--rest:#5C8A72;--travel:#77848C;--danger:#AD493C;--danger-soft:#FCEDE9;--danger-line:#F0D3CC;--radius-card:16px;--radius-btn:12px;--radius-chip:8px;--nav-h:72px;--shadow:0 1px 2px rgba(30,39,37,0.05);color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:16px}*{box-sizing:border-box}html,body{margin:0;padding:0;height:100%;background:var(--canvas);color:var(--ink);-webkit-text-size-adjust:100%;overscroll-behavior-y:none}body{height:100vh;height:100dvh;overflow:hidden;line-height:1.45}[hidden]{display:none!important}button,input,select,textarea{font:inherit;color:inherit}:focus-visible{outline:3px solid rgba(50,107,92,0.35);outline-offset:2px}.app{max-width:560px;height:100vh;height:100dvh;margin:0 auto;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:14px 18px calc(var(--nav-h) + 104px)}@media (min-width:768px){.app{padding-left:24px;padding-right:24px}}.screen-head{padding:20px 0 6px}.screen-kicker{margin:0 0 4px;font-size:13px;font-weight:600;color:var(--primary);letter-spacing:0.02em}h1{margin:0;font-size:27px;line-height:1.22;font-weight:700;letter-spacing:-0.01em}.screen-sub{margin:6px 0 0;font-size:15px;line-height:1.5;color:var(--muted)}.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow)}.stack{display:grid;gap:14px;margin-top:18px}.section-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:32px 0 12px;font-size:18px;font-weight:600}.section-title span{font-size:13px;font-weight:500;color:var(--muted)}.now-card{padding:20px}.now-label{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--primary)}.now-label::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--primary)}.now-title{margin:0;font-size:21px;font-weight:600;line-height:1.32;overflow-wrap:anywhere}.now-note{margin:8px 0 0;font-size:14px;line-height:1.5;color:var(--muted)}.now-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px}.now-time{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}.now-time small{display:block;font-size:13px;font-weight:500;color:var(--muted);font-variant-numeric:normal}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border:1px solid transparent;border-radius:var(--radius-btn);font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;background:var(--surface);transition:background-color 150ms ease,border-color 150ms ease}.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#2A5A4D}.btn-soft{background:var(--primary-soft);color:var(--primary)}.btn-soft:hover{background:#D8ECE3}.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#973E33}.btn-outline{background:var(--surface);border-color:var(--line);color:var(--ink)}.btn-outline:hover{background:#F2F5F3}.btn-block{width:100%}.conflict-card{padding:18px;background:var(--danger-soft);border:1px solid var(--danger-line);border-radius:var(--radius-card)}.conflict-title{display:flex;align-items:center;gap:8px;margin:0;font-size:18px;font-weight:700;color:var(--danger);line-height:1.3}.conflict-title svg{flex:none}.conflict-text{margin:8px 0 0;font-size:14px;line-height:1.5;color:var(--ink)}.conflict-card .btn{margin-top:16px}.timeline-card{padding:18px 14px 16px 6px}.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 18px;padding:0;list-style:none;font-size:12px;color:var(--muted)}.legend li{display:inline-flex;align-items:center;gap:6px}.dot{width:8px;height:8px;border-radius:50%;flex:none}.timeline{position:relative;margin-left:40px}.hour{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none}.hour-label{position:absolute;left:-40px;top:-8px;width:32px;text-align:right;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;background:var(--surface);padding:1px 0}.now-line{position:absolute;left:-6px;right:0;border-top:2px solid var(--danger);z-index:3;pointer-events:none}.now-line::before{content:"";position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--danger)}.blk{position:absolute;left:0;right:0;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:8px 12px;border-radius:12px;overflow:hidden;color:#fff;font-size:13px;line-height:1.3;z-index:2}.blk-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.blk-meta{font-size:11px;opacity:0.9;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.blk--compact{padding:0 10px;font-size:12px;line-height:1.3}.blk--tiny{padding:0;border-radius:6px}.blk--tiny .blk-title{display:none}.blk--school{background:var(--school)}.blk--extra{background:var(--extra)}.blk--personal{background:var(--travel)}.blk--task{background:var(--task)}.blk--rest{background:var(--rest)}.blk--travel{color:#33403C;background:repeating-linear-gradient(135deg,#E9EEEC 0 8px,#DCE5E1 8px 16px)}.blk--free{background:transparent;border:1px dashed #C9D5CF;color:var(--muted);z-index:1;align-items:flex-start;justify-content:center;padding:4px 10px}.blk--free .blk-title{font-weight:500;font-size:12px}.blk.is-active{box-shadow:0 0 0 3px rgba(50,107,92,0.35)}.summary{display:grid;gap:0;padding:4px 18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow)}.sum-card{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--line)}.sum-card:first-child{border-top:0}.sum-card dt{margin:0;font-size:14px;color:var(--muted)}.sum-card dd{margin:0;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3;text-align:right}.sum-card dd small{display:block;margin-top:2px;font-size:12px;font-weight:500;color:var(--muted)}@media (max-width:359px){.sum-card{gap:10px}.sum-card dd{font-size:16px}}.week-list{display:grid;gap:10px;margin-top:18px}.week-row{display:block;width:100%;text-align:left;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);cursor:pointer;transition:background-color 150ms ease}.week-row:hover{background:#FBFCFB}.week-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}.week-day{font-size:15px;font-weight:600}.week-date{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.badge{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--danger-soft);color:var(--danger)}.badge--ok{background:var(--primary-soft);color:var(--primary)}.week-bar{position:relative;height:6px;margin:12px 0 10px;border-radius:999px;background:#EDF1EF;overflow:hidden}.week-bar i{position:absolute;inset:0 auto 0 0;display:block;border-radius:999px;background:var(--primary)}.week-bar i.is-over{background:var(--danger)}.week-meta{display:flex;gap:14px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.today-mark{font-size:12px;font-weight:600;color:var(--primary);background:var(--primary-soft);border-radius:999px;padding:2px 8px}.back-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin-left:-8px;padding:0 8px;background:none;border:0;color:var(--primary);font-size:15px;font-weight:600;cursor:pointer}.fact{padding:18px;background:var(--danger-soft);border:1px solid var(--danger-line);border-radius:var(--radius-card)}.fact p{margin:0}.fact .fact-title{font-size:18px;font-weight:700;color:var(--danger)}.fact .fact-text{margin-top:8px;font-size:14px;line-height:1.5}.alt{padding:18px}.alt h3{margin:0;font-size:17px;font-weight:600;line-height:1.4}.alt-changes{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px;line-height:1.45;color:var(--muted)}.alt-changes li{display:flex;gap:8px}.alt-changes li::before{content:"—";color:var(--line)}.cmp{display:grid;gap:8px;margin:18px 0 4px;font-size:12px;color:var(--muted)}.cmp-row{display:grid;grid-template-columns:82px 1fr 52px;align-items:center;gap:8px}.cmp-bar{height:8px;border-radius:999px;background:#EDF1EF;overflow:hidden}.cmp-bar i{display:block;height:100%;border-radius:999px;background:var(--danger)}.cmp-bar i.after{background:var(--primary)}.cmp-val{text-align:right;font-variant-numeric:tabular-nums}.risk-line{margin:12px 0 0;font-size:13px;line-height:1.45}.risk-line strong{font-weight:600}.alt .btn{margin-top:18px}.alt-note{margin:8px 0 0;font-size:13px;color:var(--muted)}.settings{padding:18px;display:grid;gap:18px}.field{display:grid;gap:7px}.field>label,.field-label{font-size:14px;font-weight:600}.field .hint{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}.input{width:100%;min-height:44px;padding:10px 12px;background:var(--surface);border:1px solid #CDD8D3;border-radius:10px;font-size:15px}.input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px rgba(50,107,92,0.15)}.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}.switch{position:relative;width:46px;height:28px;flex:none}.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}.switch span{position:absolute;inset:0;border-radius:999px;background:#CBD6D1;transition:background-color 150ms ease}.switch span::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform 150ms ease}.switch input:checked + span{background:var(--primary)}.switch input:checked + span::after{transform:translateX(18px)}.switch input:focus-visible + span{outline:3px solid rgba(50,107,92,0.35);outline-offset:2px}.field-error{margin:0;font-size:12px;color:var(--danger);min-height:0}.field-error:empty{display:none}.input[aria-invalid="true"]{border-color:var(--danger)}.about{padding:18px;font-size:13px;line-height:1.55;color:var(--muted)}.reset-confirm{display:grid;gap:12px;padding:14px;background:var(--danger-soft);border:1px solid var(--danger-line);border-radius:12px}.reset-confirm-text{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}.reset-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.reset-confirm-actions .btn{padding:0 12px}.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));max-width:100%}.nav-inner{display:flex;width:100%;max-width:560px;gap:8px}.nav-btn{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;padding:4px;border:0;border-radius:12px;background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer}.nav-btn svg{width:22px;height:22px}.nav-btn[aria-current="page"]{color:var(--primary);font-weight:700}.nav-btn[aria-current="page"]::before{content:"";position:absolute;top:-7px;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--primary)}.nav-add{flex:none;align-self:center;display:flex;align-items:center;justify-content:center;width:52px;height:52px;margin-left:4px;border:0;border-radius:50%;background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(50,107,92,0.26);cursor:pointer}.nav-add:hover{background:#2A5A4D}.sheet-backdrop{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:rgba(30,39,37,0.45)}.sheet{width:100%;max-width:560px;max-height:90dvh;overflow-y:auto;padding:12px 20px calc(24px + env(safe-area-inset-bottom));background:var(--surface);border-radius:22px 22px 0 0;animation:sheet-in 220ms ease}@keyframes sheet-in{from{transform:translateY(24px);opacity:0.6}to{transform:translateY(0);opacity:1}}@media (prefers-reduced-motion:reduce){.sheet{animation:none}*{transition-duration:0.01ms!important;animation-duration:0.01ms!important}}.sheet-handle{width:36px;height:4px;margin:2px auto 10px;border-radius:999px;background:var(--line)}.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.sheet-head h2{margin:0;font-size:20px;font-weight:700}.icon-btn{display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-8px;border:0;border-radius:50%;background:none;color:var(--muted);font-size:22px;cursor:pointer}.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:16px 0 20px;padding:4px;background:#F1F4F2;border-radius:12px}.seg-btn{min-height:40px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}.seg-btn[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(30,39,37,0.08)}.fields{display:grid;gap:16px}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{min-height:38px;padding:0 14px;border:1px solid #CDD8D3;border-radius:var(--radius-chip);background:var(--surface);font-size:13px;font-weight:500;cursor:pointer}.chip[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-soft);color:var(--primary);font-weight:600}.form-foot{margin-top:22px;display:grid;gap:12px}.form-note{margin:0;font-size:12px;color:var(--muted)}.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 84px + env(safe-area-inset-bottom));z-index:60;transform:translate(-50%,8px);max-width:min(92vw,480px);padding:12px 16px;border-radius:12px;background:var(--ink);color:#fff;font-size:14px;line-height:1.35;box-shadow:0 8px 24px rgba(30,39,37,0.24);opacity:0;pointer-events:none;transition:opacity 180ms ease,transform 180ms ease}.toast.is-visible{opacity:1;transform:translate(-50%,0)}.empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}.empty p{margin:0 0 14px}.load-error{position:fixed;left:12px;right:12px;bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--danger-soft);border:1px solid var(--danger-line);border-radius:14px;color:var(--ink);font-size:14px;box-shadow:0 8px 24px rgba(30,39,37,0.16)}.load-error p{margin:0}.load-error button{flex:none;min-height:40px;padding:0 14px;border:0;border-radius:10px;background:var(--danger);color:#fff;font-size:14px;font-weight:600;cursor:pointer}.noscript{margin:24px 16px;padding:16px;background:var(--danger-soft);border:1px solid var(--danger-line);border-radius:14px;font-size:14px}</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ================= СЕГОДНЯ ================= -->
+  <section id="screen-today">
+    <header class="screen-head">
+      <p class="screen-kicker" id="todayKicker">Сегодня</p>
+      <h1 id="todayDate">—</h1>
+      <p class="screen-sub" id="todayGreeting">Соберём день так, чтобы всё поместилось.</p>
+    </header>
+
+    <div class="stack">
+      <article class="card now-card" id="nowCard" aria-live="polite"></article>
+      <article class="conflict-card" id="conflictCard" hidden></article>
+    </div>
+
+    <h2 class="section-title">Шкала дня <span id="timelineRange"></span></h2>
+    <div class="card timeline-card">
+      <ul class="legend" aria-hidden="true">
+        <li><i class="dot" style="background:var(--school)"></i>Школа</li>
+        <li><i class="dot" style="background:var(--extra)"></i>Кружки</li>
+        <li><i class="dot" style="background:var(--task)"></i>Задания</li>
+        <li><i class="dot" style="background:var(--rest)"></i>Отдых</li>
+        <li><i class="dot" style="background:var(--travel)"></i>Дорога</li>
+      </ul>
+      <div class="timeline" id="timeline" role="list" aria-label="Расписание дня"></div>
+    </div>
+
+    <h2 class="section-title">Итог дня</h2>
+    <dl class="summary" id="summary"></dl>
+  </section>
+
+  <!-- ================= НЕДЕЛЯ ================= -->
+  <section id="screen-week" hidden>
+    <header class="screen-head">
+      <p class="screen-kicker">7 дней</p>
+      <h1>Неделя</h1>
+      <p class="screen-sub">Где нагрузка выше и сколько времени остаётся.</p>
+    </header>
+    <div class="week-list" id="weekList"></div>
+  </section>
+
+  <!-- ================= ПЛАН Б ================= -->
+  <section id="screen-planb" hidden>
+    <button class="back-btn" id="planbBack" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Назад к дню
+    </button>
+    <header class="screen-head">
+      <p class="screen-kicker">План Б</p>
+      <h1>Как всё успеть</h1>
+      <p class="screen-sub">Посмотри последствия до того, как выбрать.</p>
+    </header>
+    <div class="stack" id="planbBody"></div>
+  </section>
+
+  <!-- ================= ПРОФИЛЬ ================= -->
+  <section id="screen-profile" hidden>
+    <header class="screen-head">
+      <p class="screen-kicker">Настройки</p>
+      <h1>Профиль</h1>
+      <p class="screen-sub">Границы дня и отдых, которые TimeBalance защищает.</p>
+    </header>
+
+    <div class="stack">
+      <div class="card settings">
+        <div class="field">
+          <label for="setDayEnd">Учебные дела заканчиваются</label>
+          <input class="input" type="time" id="setDayEnd" value="21:00">
+          <p class="hint">После этого времени задания не ставятся.</p>
+        </div>
+        <div class="field">
+          <label for="setBreak">Перерыв после школы, минут</label>
+          <input class="input" type="number" id="setBreak" min="0" max="180" step="5" inputmode="numeric" value="30">
+          <p class="hint">Отдых остаётся на шкале отдельным блоком.</p>
+        </div>
+        <div class="switch-row">
+          <label class="field-label" for="setNotify">Уведомления в чате</label>
+          <span class="switch">
+            <input type="checkbox" id="setNotify" checked>
+            <span aria-hidden="true"></span>
+          </span>
+        </div>
+        <button class="btn btn-primary btn-block" id="saveSettings" type="button">Сохранить</button>
+      </div>
+
+      <div class="card settings">
+        <div class="field">
+          <span class="field-label">Данные</span>
+          <p class="hint">Сброс удалит добавленные дела и настройки на этом устройстве.</p>
+        </div>
+        <button class="btn btn-outline btn-block" id="resetData" type="button">Сбросить данные</button>
+        <div class="reset-confirm" id="resetConfirm" hidden>
+          <p class="reset-confirm-text">Удалить все дела и настройки? Отменить это будет нельзя.</p>
+          <div class="reset-confirm-actions">
+            <button class="btn btn-danger" id="resetConfirmYes" type="button">Да, сбросить</button>
+            <button class="btn btn-outline" id="resetCancel" type="button">Отмена</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card about">
+        TimeBalance — учебный проект. Приложение показывает, помещаются ли дела
+        в реальный день, и предлагает безопасные варианты перестройки плана.
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="bottom-nav" aria-label="Основная навигация">
+  <div class="nav-inner">
+    <button class="nav-btn" type="button" data-screen="today" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="15.5" r="1.6" fill="currentColor"/>
+      </svg>
+      Сегодня
+    </button>
+    <button class="nav-btn" type="button" data-screen="week">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="17" rx="3" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M3 9h18M9 9v12M15 9v12" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      Неделя
+    </button>
+    <button class="nav-btn" type="button" data-screen="profile">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      Профиль
+    </button>
+    <button class="nav-add" id="fab" type="button" aria-label="Добавить дело">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ================= ЛИСТ ДОБАВЛЕНИЯ ================= -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheet">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="sheetTitle">Новое дело</h2>
+      <button class="icon-btn" id="sheetClose" type="button" aria-label="Закрыть">×</button>
+    </div>
+
+    <div class="seg" role="group" aria-label="Тип дела">
+      <button class="seg-btn" id="tabTask" type="button" aria-pressed="true">Задание</button>
+      <button class="seg-btn" id="tabEvent" type="button" aria-pressed="false">Занятие</button>
+    </div>
+
+    <form id="addForm" novalidate>
+      <!-- Задание -->
+      <div class="fields" id="fieldsTask">
+        <div class="field">
+          <label for="taskTitle">Название</label>
+          <input class="input" id="taskTitle" type="text" maxlength="120" autocomplete="off"
+                 placeholder="Напр.: алгебра, 12 номеров" aria-describedby="taskTitleErr">
+          <p class="field-error" id="taskTitleErr"></p>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label for="taskDue">Срок</label>
+            <input class="input" id="taskDue" type="date" aria-describedby="taskDueErr">
+            <p class="field-error" id="taskDueErr"></p>
+          </div>
+          <div class="field">
+            <label for="taskEst">Длительность, мин</label>
+            <input class="input" id="taskEst" type="number" min="5" max="480" step="5"
+                   inputmode="numeric" value="45" aria-describedby="taskEstErr">
+            <p class="field-error" id="taskEstErr"></p>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label">Приоритет</span>
+          <div class="chips" id="priorityChips" role="group" aria-label="Приоритет">
+            <button class="chip" type="button" data-priority="normal" aria-pressed="true">Обычный</button>
+            <button class="chip" type="button" data-priority="high" aria-pressed="false">Срочно</button>
+          </div>
+        </div>
+        <label class="switch-row" for="taskSplit">
+          <span class="field-label">Можно разделить на части</span>
+          <span class="switch">
+            <input type="checkbox" id="taskSplit" checked>
+            <span aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Занятие -->
+      <div class="fields" id="fieldsEvent" hidden>
+        <div class="field">
+          <label for="eventTitle">Название</label>
+          <input class="input" id="eventTitle" type="text" maxlength="120" autocomplete="off"
+                 placeholder="Напр.: кружок по физике" aria-describedby="eventTitleErr">
+          <p class="field-error" id="eventTitleErr"></p>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label for="eventStart">Начало</label>
+            <input class="input" id="eventStart" type="time" value="16:00" aria-describedby="eventTimeErr">
+          </div>
+          <div class="field">
+            <label for="eventEnd">Конец</label>
+            <input class="input" id="eventEnd" type="time" value="17:30">
+          </div>
+        </div>
+        <p class="field-error" id="eventTimeErr"></p>
+        <div class="field">
+          <label for="eventCategory">Категория</label>
+          <select class="input" id="eventCategory">
+            <option value="extra">Кружок или секция</option>
+            <option value="school">Школа</option>
+            <option value="personal">Личное</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="eventTravel">Дорога в одну сторону, мин</label>
+          <input class="input" id="eventTravel" type="number" min="0" max="240" step="5"
+                 inputmode="numeric" value="0">
+        </div>
+        <div class="field">
+          <label for="eventDate">Дата</label>
+          <input class="input" id="eventDate" type="date">
+          <p class="hint">Занятие повторится в этот день недели.</p>
+        </div>
+        <label class="switch-row" for="eventMovable">
+          <span class="field-label">Можно перенести</span>
+          <span class="switch">
+            <input type="checkbox" id="eventMovable">
+            <span aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="form-foot">
+        <button class="btn btn-primary btn-block" type="submit" id="saveDeal">Сохранить</button>
+        <p class="form-note" id="formNote">Три поля — и дело появится на шкале.</p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="load-error" id="loadError" hidden>
+  <p>Не удалось загрузить приложение. Проверь связь и попробуй ещё раз.</p>
+  <button type="button" onclick="location.reload()">Повторить</button>
+</div>
+<noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
+<script src="app.min.js?v=61b63f5931" defer></script>
+<script>
+(function () {
+  "use strict";
+  var tries = 0;
+  function banner() {
+    var el = document.getElementById("loadError");
+    if (el) el.hidden = false;
+  }
+  function retry() {
+    if (window.__tbReady) return;
+    if (tries >= 2) { banner(); return; }
+    tries += 1;
+    var s = document.createElement("script");
+    s.src = "app.min.js?v=61b63f5931&r=" + tries;
+    s.onload = function () { if (!window.__tbReady) banner(); };
+    s.onerror = retry;
+    document.body.appendChild(s);
+  }
+  window.addEventListener("load", function () {
+    window.setTimeout(function () { if (!window.__tbReady) retry(); }, 1500);
+  });
+})();
+</script>
+</body>
+</html>
