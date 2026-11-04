@@ -1,8 +1,11 @@
-# --- Бот ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pymaxbot>=0.1.8
+aiosqlite>=0.20
 httpx>=0.27
-certifi>=2024.2
 python-dotenv>=1.0
+# На Windows нет системной базы часовых поясов — zoneinfo берёт её отсюда.
+tzdata>=2024.1
 
-# --- Сборка мини-приложения ---
-rjsmin>=1.2
-rcssmin>=1.1
+# только для разработки и тестов
+pytest>=8.0
