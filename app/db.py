@@ -1,9 +1,4 @@
-"""Хранилище SQLite.
-
-Одно соединение на процесс: FastAPI работает в одном event loop, а ``aiosqlite``
-переносит запросы в отдельный поток, поэтому соединение безопасно для совместного
-использования. Все запросы идут через короткие функции-репозитории.
-"""
+"""Хранилище PostgreSQL. Соединения выдаются пулом на время запроса."""
 from __future__ import annotations
 
 import json
@@ -11,14 +6,49 @@ import uuid
 from datetime import date, datetime, time, timezone
 from typing import Any
 
-import aiosqlite
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
+
+
+class Query:
+    """Небольшой адаптер для существующих вызовов execute и async with execute."""
+
+    def __init__(self, conn: AsyncConnection, sql: str, params: tuple | list = ()):
+        self.conn = conn
+        self.sql = sql.replace("?", "%s")
+        self.params = tuple(value.isoformat() if isinstance(value, (date, datetime))
+                            else value for value in params)
+        self.cursor = None
+
+    async def _run(self):
+        self.cursor = await self.conn.execute(self.sql, self.params)
+        return self.cursor
+
+    def __await__(self):
+        return self._run().__await__()
+
+    async def __aenter__(self):
+        return await self._run()
+
+    async def __aexit__(self, *_exc):
+        await self.cursor.close()
+
+
+class Connection:
+    def __init__(self, raw: AsyncConnection):
+        self.raw = raw
+
+    def execute(self, sql: str, params: tuple | list = ()) -> Query:
+        return Query(self.raw, sql, params)
+
+    async def commit(self) -> None:
+        await self.raw.commit()
 
 SCHEMA = """
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS users (
     id                      TEXT PRIMARY KEY,
-    max_user_id             INTEGER UNIQUE,
+    max_user_id             BIGINT UNIQUE,
     display_name            TEXT,
     timezone                TEXT NOT NULL DEFAULT 'Europe/Moscow',
     day_end                 TEXT NOT NULL DEFAULT '21:00',
@@ -84,12 +114,21 @@ def new_id() -> str:
     return str(uuid.uuid4())
 
 
-async def open_db(path: str) -> aiosqlite.Connection:
-    conn = await aiosqlite.connect(path)
-    conn.row_factory = aiosqlite.Row
-    await conn.executescript(SCHEMA)
-    await conn.commit()
-    return conn
+async def open_db(url: str) -> AsyncConnectionPool:
+    if not url:
+        raise RuntimeError("DATABASE_URL не задан: требуется PostgreSQL")
+    pool = AsyncConnectionPool(url, min_size=1, max_size=5, open=False,
+                               kwargs={"row_factory": dict_row})
+    await pool.open(wait=True)
+    try:
+        async with pool.connection() as conn:
+            for statement in SCHEMA.split(";"):
+                if statement.strip():
+                    await conn.execute(statement)
+    except Exception:
+        await pool.close()
+        raise
+    return pool
 
 
 # --------------------------------------------------------------------------
@@ -104,7 +143,7 @@ DEFAULT_SETTINGS = {
 }
 
 
-def row_to_user(row: aiosqlite.Row) -> dict[str, Any]:
+def row_to_user(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row["id"],
         "max_user_id": row["max_user_id"],
@@ -118,28 +157,29 @@ def row_to_user(row: aiosqlite.Row) -> dict[str, Any]:
     }
 
 
-async def get_user(conn: aiosqlite.Connection, user_id: str) -> dict[str, Any] | None:
+async def get_user(conn: Connection, user_id: str) -> dict[str, Any] | None:
     async with conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)) as cur:
         row = await cur.fetchone()
     return row_to_user(row) if row else None
 
 
-async def get_user_by_max_id(conn: aiosqlite.Connection, max_user_id: int) -> dict[str, Any] | None:
+async def get_user_by_max_id(conn: Connection, max_user_id: int) -> dict[str, Any] | None:
     async with conn.execute("SELECT * FROM users WHERE max_user_id = ?", (max_user_id,)) as cur:
         row = await cur.fetchone()
     return row_to_user(row) if row else None
 
 
 async def create_user(
-    conn: aiosqlite.Connection,
+    conn: Connection,
     max_user_id: int | None = None,
     display_name: str | None = None,
 ) -> dict[str, Any]:
     user_id = new_id()
-    await conn.execute(
+    cur = await conn.execute(
         """INSERT INTO users (id, max_user_id, display_name, timezone, day_end,
                               break_after_school_min, notifications_enabled, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(max_user_id) DO NOTHING""",
         (
             user_id,
             max_user_id,
@@ -152,13 +192,17 @@ async def create_user(
         ),
     )
     await conn.commit()
+    if cur.rowcount == 0 and max_user_id is not None:
+        existing = await get_user_by_max_id(conn, max_user_id)
+        assert existing is not None
+        return existing
     user = await get_user(conn, user_id)
     assert user is not None
     return user
 
 
 async def get_or_create_by_max_id(
-    conn: aiosqlite.Connection, max_user_id: int, display_name: str | None
+    conn: Connection, max_user_id: int, display_name: str | None
 ) -> dict[str, Any]:
     """Один и тот же школьник в боте и в мини-приложении — одна запись."""
     user = await get_user_by_max_id(conn, max_user_id)
@@ -174,7 +218,7 @@ async def get_or_create_by_max_id(
 
 
 async def update_settings(
-    conn: aiosqlite.Connection, user_id: str, patch: dict[str, Any]
+    conn: Connection, user_id: str, patch: dict[str, Any]
 ) -> dict[str, Any] | None:
     fields: list[str] = []
     values: list[Any] = []
@@ -199,10 +243,8 @@ async def update_settings(
     return await get_user(conn, user_id)
 
 
-async def delete_user_data(conn: aiosqlite.Connection, user_id: str) -> None:
-    # alternatives и notifications_sent удаляются каскадом вместе с users.
-    await conn.execute("DELETE FROM events WHERE user_id = ?", (user_id,))
-    await conn.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
+async def delete_user_data(conn: Connection, user_id: str) -> None:
+    # Все связанные записи удаляются каскадом вместе с пользователем.
     await conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     await conn.commit()
 
@@ -211,7 +253,7 @@ async def delete_user_data(conn: aiosqlite.Connection, user_id: str) -> None:
 # События
 # --------------------------------------------------------------------------
 
-def row_to_event(row: aiosqlite.Row) -> dict[str, Any]:
+def row_to_event(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row["id"],
         "title": row["title"],
@@ -232,7 +274,7 @@ def row_to_event(row: aiosqlite.Row) -> dict[str, Any]:
     }
 
 
-async def list_events(conn: aiosqlite.Connection, user_id: str) -> list[dict[str, Any]]:
+async def list_events(conn: Connection, user_id: str) -> list[dict[str, Any]]:
     async with conn.execute(
         "SELECT * FROM events WHERE user_id = ? ORDER BY starts_at", (user_id,)
     ) as cur:
@@ -240,7 +282,7 @@ async def list_events(conn: aiosqlite.Connection, user_id: str) -> list[dict[str
     return [row_to_event(row) for row in rows]
 
 
-async def get_event(conn: aiosqlite.Connection, user_id: str, event_id: str) -> dict[str, Any] | None:
+async def get_event(conn: Connection, user_id: str, event_id: str) -> dict[str, Any] | None:
     async with conn.execute(
         "SELECT * FROM events WHERE id = ? AND user_id = ?", (event_id, user_id)
     ) as cur:
@@ -248,7 +290,7 @@ async def get_event(conn: aiosqlite.Connection, user_id: str, event_id: str) -> 
     return row_to_event(row) if row else None
 
 
-async def create_event(conn: aiosqlite.Connection, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+async def create_event(conn: Connection, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
     event_id = new_id()
     recurrence = data.get("recurrence")
     await conn.execute(
@@ -277,7 +319,7 @@ async def create_event(conn: aiosqlite.Connection, user_id: str, data: dict[str,
 
 
 async def update_event(
-    conn: aiosqlite.Connection, user_id: str, event_id: str, patch: dict[str, Any]
+    conn: Connection, user_id: str, event_id: str, patch: dict[str, Any]
 ) -> dict[str, Any] | None:
     columns = {
         "title": "title",
@@ -305,7 +347,7 @@ async def update_event(
     return await get_event(conn, user_id, event_id)
 
 
-async def delete_event(conn: aiosqlite.Connection, user_id: str, event_id: str) -> bool:
+async def delete_event(conn: Connection, user_id: str, event_id: str) -> bool:
     cur = await conn.execute(
         "DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, user_id)
     )
@@ -321,7 +363,7 @@ TASK_STATUSES = ("todo", "in_progress", "done")
 TASK_PRIORITIES = ("normal", "high")
 
 
-def row_to_task(row: aiosqlite.Row) -> dict[str, Any]:
+def row_to_task(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row["id"],
         "title": row["title"],
@@ -333,7 +375,7 @@ def row_to_task(row: aiosqlite.Row) -> dict[str, Any]:
     }
 
 
-async def list_tasks(conn: aiosqlite.Connection, user_id: str) -> list[dict[str, Any]]:
+async def list_tasks(conn: Connection, user_id: str) -> list[dict[str, Any]]:
     async with conn.execute(
         "SELECT * FROM tasks WHERE user_id = ? ORDER BY due_at", (user_id,)
     ) as cur:
@@ -341,7 +383,7 @@ async def list_tasks(conn: aiosqlite.Connection, user_id: str) -> list[dict[str,
     return [row_to_task(row) for row in rows]
 
 
-async def get_task(conn: aiosqlite.Connection, user_id: str, task_id: str) -> dict[str, Any] | None:
+async def get_task(conn: Connection, user_id: str, task_id: str) -> dict[str, Any] | None:
     async with conn.execute(
         "SELECT * FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id)
     ) as cur:
@@ -349,7 +391,7 @@ async def get_task(conn: aiosqlite.Connection, user_id: str, task_id: str) -> di
     return row_to_task(row) if row else None
 
 
-async def create_task(conn: aiosqlite.Connection, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+async def create_task(conn: Connection, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
     task_id = new_id()
     await conn.execute(
         """INSERT INTO tasks (id, user_id, title, due_at, estimated_min,
@@ -372,7 +414,7 @@ async def create_task(conn: aiosqlite.Connection, user_id: str, data: dict[str, 
 
 
 async def update_task(
-    conn: aiosqlite.Connection, user_id: str, task_id: str, patch: dict[str, Any]
+    conn: Connection, user_id: str, task_id: str, patch: dict[str, Any]
 ) -> dict[str, Any] | None:
     columns = {
         "title": "title",
@@ -400,7 +442,7 @@ async def update_task(
     return await get_task(conn, user_id, task_id)
 
 
-async def delete_task(conn: aiosqlite.Connection, user_id: str, task_id: str) -> bool:
+async def delete_task(conn: Connection, user_id: str, task_id: str) -> bool:
     cur = await conn.execute(
         "DELETE FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id)
     )
@@ -413,7 +455,7 @@ async def delete_task(conn: aiosqlite.Connection, user_id: str, task_id: str) ->
 # --------------------------------------------------------------------------
 
 async def save_alternative(
-    conn: aiosqlite.Connection,
+    conn: Connection,
     alt_id: str,
     user_id: str,
     conflict_id: str,
@@ -434,7 +476,7 @@ async def save_alternative(
 
 
 async def get_alternative(
-    conn: aiosqlite.Connection, user_id: str, alt_id: str
+    conn: Connection, user_id: str, alt_id: str
 ) -> dict[str, Any] | None:
     async with conn.execute(
         "SELECT * FROM alternatives WHERE id = ? AND user_id = ?", (alt_id, user_id)
@@ -450,7 +492,7 @@ async def get_alternative(
     }
 
 
-async def already_notified(conn: aiosqlite.Connection, user_id: str, kind: str, key: str) -> bool:
+async def already_notified(conn: Connection, user_id: str, kind: str, key: str) -> bool:
     async with conn.execute(
         "SELECT 1 FROM notifications_sent WHERE user_id = ? AND kind = ? AND key = ?",
         (user_id, kind, key),
@@ -458,7 +500,7 @@ async def already_notified(conn: aiosqlite.Connection, user_id: str, kind: str, 
         return await cur.fetchone() is not None
 
 
-async def mark_notified(conn: aiosqlite.Connection, user_id: str, kind: str, key: str) -> None:
+async def mark_notified(conn: Connection, user_id: str, kind: str, key: str) -> None:
     await conn.execute(
         """INSERT INTO notifications_sent (user_id, kind, key, sent_at)
            VALUES (?, ?, ?, ?)

@@ -4,10 +4,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import time
 import urllib.parse
+import uuid
 
 import pytest
+import psycopg
+from psycopg import sql
+from psycopg.conninfo import make_conninfo
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -36,17 +41,27 @@ def build_init_data(user_id: int = 777, auth_date: int | None = None) -> str:
 
 
 @pytest.fixture()
-def client(tmp_path):
+def client():
+    test_url = os.getenv("TEST_DATABASE_URL")
+    if not test_url:
+        pytest.skip("Для API-тестов задайте TEST_DATABASE_URL на отдельную PostgreSQL")
+    schema = f"test_{uuid.uuid4().hex}"
+    with psycopg.connect(test_url, autocommit=True) as admin:
+        admin.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
     settings = Settings(
         bot_token=BOT_TOKEN,
         enable_bot=False,
         enable_notifier=False,
-        database_path=str(tmp_path / "api-test.db"),
+        database_url=make_conninfo(test_url, options=f"-csearch_path={schema}"),
         jwt_secret="test-secret",
         mini_app_url="https://example.com/app",
     )
-    with TestClient(create_app(settings)) as test_client:
-        yield test_client
+    try:
+        with TestClient(create_app(settings)) as test_client:
+            yield test_client
+    finally:
+        with psycopg.connect(test_url, autocommit=True) as admin:
+            admin.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema)))
 
 
 @pytest.fixture()

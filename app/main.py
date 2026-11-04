@@ -43,7 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.settings = settings
-        app.state.db = await db.open_db(settings.database_path)
+        app.state.db = await db.open_db(settings.database_url)
         app.state.stop = asyncio.Event()
         app.state.background: list[asyncio.Task] = []
 

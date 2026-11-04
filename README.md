@@ -49,7 +49,7 @@
 |---|---|
 | API | FastAPI + Pydantic (схемы повторяют `openapi.yaml`) |
 | Бот | [`pymaxbot`](https://github.com/svkurick/max_bot) — Python SDK MAX |
-| База | SQLite через `aiosqlite` |
+| База | PostgreSQL через `psycopg` |
 | Время | `zoneinfo`, часовой пояс из профиля пользователя |
 
 ## Запуск
@@ -58,14 +58,26 @@
 откройте `http://127.0.0.1:8000/` (переход на `/miniapp/`). В обычном браузере
 мини-приложение работает как локальное демо. При запуске внутри MAX оно получает
 подписанное `window.WebApp.initData`, обменивает его на сессию через
-`/api/v1/auth/max` и сохраняет дела и настройки в SQLite через API. Для MAX
+`/api/v1/auth/max` и сохраняет дела и настройки в PostgreSQL через API. Для MAX
 нужен публичный HTTPS-адрес этого же сервера и `MAX_BOT_TOKEN` в окружении.
 
 ```bash
+docker compose up -d postgres  # локальная PostgreSQL на порту 5433
 pip install -r requirements.txt
 
-cp .env.example .env      # вписать MAX_BOT_TOKEN и MINI_APP_URL
+cp .env.example .env      # вписать MAX_BOT_TOKEN, MINI_APP_URL и DATABASE_URL
 python code.py            # http://127.0.0.1:8000
+```
+
+Для локального Docker задайте в `.env`:
+`DATABASE_URL=postgresql://timebalance:timebalance_dev@127.0.0.1:5433/timebalance`.
+Таблицы создаются при первом запуске. Старый SQLite-файл не удаляется.
+
+Для Render создайте PostgreSQL и передайте его **Internal Database URL** в
+`DATABASE_URL` веб-сервиса. Команда запуска:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 Swagger UI — `http://127.0.0.1:8000/docs`, спецификация — `/openapi.json`
@@ -78,7 +90,7 @@ Swagger UI — `http://127.0.0.1:8000/docs`, спецификация — `/open
 - `MAX_BOT_TOKEN` — токен бота; без него работает только API, бот и уведомления отключаются;
 - `MINI_APP_URL` — ссылка, которую бот отдаёт по кнопке;
 - `DAY_START` / `профиль пользователя.day_end` — границы учебного дня;
-- `TIMEBALANCE_DB` — файл базы SQLite.
+- `DATABASE_URL` — строка подключения PostgreSQL; без неё сервер не запускается.
 
 **Токен и другие секреты в репозиторий не попадают:** `.env` в `.gitignore`,
 `.env.example` содержит только плейсхолдеры.

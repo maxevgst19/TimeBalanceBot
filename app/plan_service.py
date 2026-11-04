@@ -11,19 +11,18 @@ from dataclasses import dataclass
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import aiosqlite
 
 from . import db
 from .planning import engine
 from .planning.model import Boundaries, EventRec, PlanResult, TaskRec
 
 
-async def load_events(conn: aiosqlite.Connection, user: dict[str, Any]) -> list[EventRec]:
+async def load_events(conn: db.Connection, user: dict[str, Any]) -> list[EventRec]:
     tz = ZoneInfo(user["settings"]["timezone"])
     return [engine.event_to_rec(raw, tz) for raw in await db.list_events(conn, user["id"])]
 
 
-async def load_tasks(conn: aiosqlite.Connection, user: dict[str, Any]) -> list[TaskRec]:
+async def load_tasks(conn: db.Connection, user: dict[str, Any]) -> list[TaskRec]:
     tz = ZoneInfo(user["settings"]["timezone"])
     return [engine.task_to_rec(raw, tz) for raw in await db.list_tasks(conn, user["id"])]
 
@@ -33,7 +32,7 @@ def boundaries_of(user: dict[str, Any], day_start: str) -> Boundaries:
 
 
 async def compute_plan(
-    conn: aiosqlite.Connection,
+    conn: db.Connection,
     user: dict[str, Any],
     date_from: date,
     date_to: date,

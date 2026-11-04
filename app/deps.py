@@ -19,8 +19,9 @@ def get_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
-def get_conn(request: Request):
-    return request.app.state.db
+async def get_conn(request: Request):
+    async with request.app.state.db.connection() as raw:
+        yield db.Connection(raw)
 
 
 async def get_current_user(

@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 import yaml
-from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -40,11 +39,10 @@ def main() -> int:
         bot_token="1:SMOKE",
         enable_bot=False,
         enable_notifier=False,
-        database_path=":memory:",
+        database_url="",
         jwt_secret="smoke",
     )
-    with TestClient(create_app(settings)) as client:
-        generated = client.get("/openapi.json").json()
+    generated = create_app(settings).openapi()
 
     contract = yaml.safe_load((ROOT / "openapi.yaml").read_text(encoding="utf-8"))
 

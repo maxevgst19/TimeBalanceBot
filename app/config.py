@@ -41,7 +41,7 @@ def _derive_secret(bot_token: str) -> str:
 @dataclass(frozen=True)
 class Settings:
     bot_token: str = ""
-    database_path: str = "timebalance.db"
+    database_url: str = ""
     mini_app_url: str = ""
     session_ttl_seconds: int = 7 * 24 * 3600
     init_data_max_age_seconds: int = 24 * 3600
@@ -63,7 +63,7 @@ class Settings:
         bot_token = _env("MAX_BOT_TOKEN", "")
         return cls(
             bot_token=bot_token,
-            database_path=_env("TIMEBALANCE_DB", "timebalance.db"),
+            database_url=_env("DATABASE_URL", ""),
             mini_app_url=_env("MINI_APP_URL", ""),
             session_ttl_seconds=_env_int("SESSION_TTL_SECONDS", 7 * 24 * 3600),
             init_data_max_age_seconds=_env_int("INIT_DATA_MAX_AGE_SECONDS", 24 * 3600),

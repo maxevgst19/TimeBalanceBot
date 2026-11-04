@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
-import aiosqlite
 
 from .. import db
 from .engine import (
@@ -403,7 +402,7 @@ def _overlap_variants(
 # --------------------------------------------------------------------------
 
 async def apply_alternative(
-    conn: aiosqlite.Connection,
+    conn: db.Connection,
     user: dict[str, Any],
     alternative: dict[str, Any],
 ) -> None:

@@ -9,8 +9,8 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from psycopg_pool import AsyncConnectionPool
 
-import aiosqlite
 
 from .. import db
 from ..config import Settings
@@ -40,7 +40,7 @@ async def _send(bot, user_id: int, text: str) -> None:
 
 
 async def check_user(
-    bot, conn: aiosqlite.Connection, settings: Settings, user: dict
+    bot, conn: db.Connection, settings: Settings, user: dict
 ) -> None:
     if not user["settings"]["notifications_enabled"]:
         return
@@ -95,26 +95,29 @@ async def check_user(
 
 async def run_notifier(
     bot,
-    conn: aiosqlite.Connection,
+    pool: AsyncConnectionPool,
     settings: Settings,
     stop: asyncio.Event,
 ) -> None:
     logger.info("Планировщик уведомлений запущен")
     while not stop.is_set():
         try:
-            async with conn.execute(
-                "SELECT * FROM users WHERE notifications_enabled = 1 "
-                "AND max_user_id IS NOT NULL"
-            ) as cur:
-                users = await cur.fetchall()
-            for row in users:
-                if stop.is_set():
-                    break
-                user = db.row_to_user(row)
-                try:
-                    await check_user(bot, conn, settings, user)
-                except Exception:  # noqa: BLE001
-                    logger.exception("Ошибка проверки пользователя %s", user["id"])
+            async with pool.connection() as raw:
+                conn = db.Connection(raw)
+                async with conn.execute(
+                    "SELECT * FROM users WHERE notifications_enabled = 1 "
+                    "AND max_user_id IS NOT NULL"
+                ) as cur:
+                    users = await cur.fetchall()
+                for row in users:
+                    if stop.is_set():
+                        break
+                    user = db.row_to_user(row)
+                    try:
+                        await check_user(bot, conn, settings, user)
+                    except Exception:  # noqa: BLE001
+                        await raw.rollback()
+                        logger.exception("Ошибка проверки пользователя %s", user["id"])
         except Exception:  # noqa: BLE001
             logger.exception("Ошибка цикла уведомлений")
 
