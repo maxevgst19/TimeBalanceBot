@@ -9,3 +9,6 @@ node_modules/
 dist/
 build/
 *.exe
+*.db
+*.sqlite3
+.vscode/
