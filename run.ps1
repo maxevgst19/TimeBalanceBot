@@ -34,35 +34,12 @@ if (-not (Test-Path $envPath)) {
     Write-Host "Создан файл .env из .env.example."
 }
 
-$lines = @(Get-Content $envPath)
-$token = ""
-foreach ($line in $lines) {
-    if ($line -match '^MAX_BOT_TOKEN=(.*)$') {
-        $token = $matches[1].Trim()
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace($token)) {
-    Write-Host ""
-    Write-Host "Нужен токен бота MAX."
-    Write-Host "Получить: business.max.ru -> Чат-боты -> нужный бот -> три точки -> Настройки -> Токен."
-    $entered = Read-Host "Вставь MAX_BOT_TOKEN"
-    if ([string]::IsNullOrWhiteSpace($entered)) {
-        throw "Без MAX_BOT_TOKEN бот не запустится."
-    }
-    $token = $entered.Trim()
-    $updated = foreach ($line in $lines) {
-        if ($line -match '^MAX_BOT_TOKEN=') { "MAX_BOT_TOKEN=$token" } else { $line }
-    }
-    $utf8 = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllLines($envPath, $updated, $utf8)
-    Write-Host "Токен сохранён в .env (файл не попадает в git)."
-}
-
 if ($SetupOnly) {
     Write-Host "Готово. Запуск: .\run.ps1"
     exit 0
 }
 
+Write-Host "Для локального запуска нужна PostgreSQL: docker compose up -d postgres"
+Write-Host "MAX_BOT_TOKEN в .env нужен только для входа через MAX и бота."
 Write-Host "Запускаю TimeBalance..."
 & $python (Join-Path $root "code.py")

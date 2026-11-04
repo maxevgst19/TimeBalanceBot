@@ -4,11 +4,10 @@
 __pycache__/
 .pytest_cache/
 .venv/
-.idea/
 node_modules/
 dist/
 build/
-*.exe
 *.db
 *.sqlite3
+.idea/
 .vscode/

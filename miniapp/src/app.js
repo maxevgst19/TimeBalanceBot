@@ -114,6 +114,7 @@
       : [1];
     return {
       id: e.id || uid("e"),
+      onlyDate: e.onlyDate || null,
       title: String(e.title || "Занятие").slice(0, 120),
       category: e.category || "extra",
       weekdays: days.length ? days : [1],
@@ -157,6 +158,149 @@
   }
 
   let state = load() || initialState();
+  let apiToken = null;
+  let remoteMode = false;
+  let serverPlan = null;
+  let serverAlternatives = [];
+  const apiBase = "/api/v1";
+
+  async function api(path, method = "GET", body) {
+    const response = await fetch(apiBase + path, {
+      method,
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" })
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) })
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `Ошибка сервера (${response.status})`);
+    }
+    return response.status === 204 ? null : response.json();
+  }
+
+  function eventPayload(event, dateStr) {
+    return {
+      title: event.title, category: event.category,
+      starts_at: `${dateStr}T${event.start}:00`,
+      ends_at: `${dateStr}T${event.end}:00`,
+      travel_before_min: event.travelBefore || 0,
+      travel_after_min: event.travelAfter || 0,
+      movable: Boolean(event.movable),
+      recurrence: event.weekdays?.length ? { weekdays: event.weekdays } : null
+    };
+  }
+
+  function localDateTime(value) {
+    return value.slice(0, 16);
+  }
+
+  async function reloadRemote() {
+    const previousTasks = new Map(state.tasks.map((task) => [task.id, task]));
+    const theme = state.settings.theme || "auto";
+    const meta = state.meta || { onboarded: false };
+    const from = iso(addDays(new Date(), -7));
+    const to = iso(addDays(new Date(), 23));
+    const [user, events, tasks] = await Promise.all([
+      api("/me"),
+      api(`/events?from=${from}&to=${to}`),
+      api("/tasks")
+    ]);
+    const unique = new Map();
+    for (const event of events) if (!unique.has(event.id)) unique.set(event.id, event);
+    state = {
+      settings: {
+        dayEnd: user.settings.day_end,
+        breakAfterSchool: user.settings.break_after_school_min,
+        notifications: user.settings.notifications_enabled,
+        theme
+      },
+      events: [...unique.values()].map((event) => ({
+        id: event.id, title: event.title, category: event.category,
+        weekdays: event.recurrence?.weekdays || [],
+        onlyDate: event.recurrence ? null : event.starts_at.slice(0, 10),
+        seriesDate: (event.series_starts_at || event.starts_at).slice(0, 10),
+        start: localDateTime(event.starts_at).slice(11),
+        end: localDateTime(event.ends_at).slice(11),
+        travelBefore: event.travel_before_min,
+        travelAfter: event.travel_after_min,
+        movable: event.movable
+      })),
+      tasks: tasks.map((task) => ({
+        id: task.id, title: task.title, due: task.due_at.slice(0, 10),
+        estimated: task.estimated_min, splittable: task.splittable,
+        priority: task.priority, done: task.status === "done",
+        startedAt: task.started_at_ms || previousTasks.get(task.id)?.startedAt || null,
+        spent: task.spent_min ?? previousTasks.get(task.id)?.spent ?? 0
+      })),
+      moved: {}, splits: {}, meta
+    };
+    serverPlan = null;
+    await refreshServerPlan();
+    render();
+  }
+
+  function minuteOf(value) {
+    return toMin(localDateTime(value).slice(11));
+  }
+
+  async function refreshServerPlan() {
+    if (!apiToken) return;
+    const dateStr = selectedDate;
+    const raw = await api(`/plan?from=${dateStr}&to=${dateStr}`);
+    const conflicts = raw.conflicts.filter((item) => item.shortage_min > 0);
+    const conflict = conflicts.sort((a, b) => b.shortage_min - a.shortage_min)[0] || null;
+    const blocks = raw.blocks.map((block) => ({
+      kind: block.kind, category: block.category, title: block.title,
+      sourceId: block.source_id, from: minuteOf(block.starts_at),
+      to: minuteOf(block.ends_at)
+    }));
+    const busy = blocks.filter((block) => block.kind !== "free");
+    const dayEnd = toMin(state.settings.dayEnd);
+    const free = gaps(mergeIntervals(busy), DAY_START, dayEnd);
+    serverPlan = {
+      dateStr, dayEnd, blocks: busy, free,
+      unplaced: (conflict?.affected_task_ids || []).map((id) => ({
+        task: state.tasks.find((task) => task.id === id), need: conflict.shortage_min
+      })).filter((item) => item.task),
+      shortage: conflict?.shortage_min || 0,
+      plannedMin: raw.planned_min, freeMin: raw.free_min,
+      tasks: state.tasks.filter((task) => !task.done && task.due <= dateStr),
+      schoolEnd: DAY_START, conflict, revision: raw.revision
+    };
+    serverAlternatives = [];
+    if (screen === "planb" && conflict) {
+      const options = await api("/plan/alternatives", "POST", {
+        conflict_id: conflict.id, plan_revision: raw.revision
+      });
+      serverAlternatives = options.map((item) => ({
+        id: item.id, title: item.title, changes: item.changes,
+        remaining: item.remaining_shortage_min,
+        action: item.title === "Оставить как есть" ? "keep" : "apply"
+      }));
+    }
+  }
+
+  async function connectMax() {
+    const initData = window.WebApp?.initData || window.MAX?.WebApp?.initData;
+    if (!initData) return;
+    try {
+      const response = await fetch(apiBase + "/auth/max", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ init_data: initData })
+      });
+      if (!response.ok) throw new Error("Не удалось подтвердить вход через MAX");
+      apiToken = (await response.json()).access_token;
+      remoteMode = true;
+      await reloadRemote();
+      showToast("Данные синхронизированы");
+    } catch (error) {
+      remoteMode = false;
+      apiToken = null;
+      showToast(error.message);
+    }
+  }
   let screen = "today";
   let selectedDate = todayISO();
   let sheetType = "task";
@@ -175,8 +319,9 @@
     const root = document.documentElement;
     root.dataset.theme = theme;
     const isDark = theme === "dark" || (theme === "auto" && DARK_QUERY && DARK_QUERY.matches);
+    root.classList.toggle("is-dark", Boolean(isDark));
     const meta = $('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", isDark ? "#12181A" : "#F7F8F6");
+    if (meta) meta.setAttribute("content", isDark ? "#24221f" : "#f5f0e7");
     root.classList.add("is-theme-fading");
     window.clearTimeout(themeFadeTimer);
     themeFadeTimer = window.setTimeout(() => root.classList.remove("is-theme-fading"), 500);
@@ -225,12 +370,13 @@
   }
 
   function planFor(dateStr) {
+    if (remoteMode && serverPlan?.dateStr === dateStr) return serverPlan;
     const d = parseISO(dateStr);
     const dow = d.getDay() === 0 ? 7 : d.getDay();
     const dayEnd = Math.min(toMin(state.settings.dayEnd), 24 * 60);
     const movedOn = state.moved[dateStr] || {};
     const eventsToday = state.events.filter(
-      (e) => Array.isArray(e.weekdays) && e.weekdays.includes(dow) && !movedOn[e.id]
+      (e) => (e.onlyDate === dateStr || (!e.onlyDate && Array.isArray(e.weekdays) && e.weekdays.includes(dow))) && !movedOn[e.id]
     );
 
     const fixed = [];
@@ -378,7 +524,19 @@
     return alts;
   }
 
-  function applyAlternative(alt) {
+  async function applyAlternative(alt) {
+    if (remoteMode) {
+      if (alt.action === "keep") { setScreen("today"); return; }
+      try {
+        await api(`/plan/alternatives/${encodeURIComponent(alt.id)}/apply`, "POST", {
+          plan_revision: serverPlan.revision
+        });
+        await reloadRemote();
+        setScreen("today");
+        showToast("План Б применён");
+      } catch (error) { showToast(error.message); }
+      return;
+    }
     if (alt.id === "split") {
       const plan = planFor(selectedDate);
       const task = splitCandidate(plan);
@@ -405,53 +563,94 @@
   }
 
   // --- отметки выполнения и таймер «план против факта»
-  function toggleTaskDone(taskId) {
+  async function toggleTaskDone(taskId) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) return;
+    if (remoteMode) {
+      try {
+        const extra = !task.done && task.startedAt
+          ? { spent_min: task.spent + elapsedMinutes(task), started_at_ms: 0 } : {};
+        await api(`/tasks/${encodeURIComponent(taskId)}`, "PATCH",
+          { status: task.done ? "todo" : "done", ...extra });
+      }
+      catch (error) { showToast(error.message); return; }
+    }
     task.done = !task.done;
     if (task.done && task.startedAt) {
       commitTimer(task);
     }
     save();
+    if (remoteMode) await refreshServerPlan().catch((error) => showToast(error.message));
     showToast(task.done ? "Отмечено выполненным" : "Дело возвращено в план");
     render();
   }
 
   function commitTimer(task) {
     if (!task.startedAt) return 0;
-    const mins = Math.max(1, Math.round((Date.now() - task.startedAt) / 60000));
+    const mins = elapsedMinutes(task);
     task.spent = (task.spent || 0) + mins;
     task.startedAt = null;
     return mins;
   }
 
-  function startTask(taskId) {
+  function elapsedMinutes(task) {
+    return Math.max(1, Math.round((Date.now() - task.startedAt) / 60000));
+  }
+
+  async function startTask(taskId) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) return;
     const running = state.tasks.find((t) => t.startedAt && t.id !== task.id);
+    const startedAt = Date.now();
+    if (remoteMode) {
+      try {
+        if (running) await api(`/tasks/${encodeURIComponent(running.id)}`, "PATCH", {
+          spent_min: running.spent + elapsedMinutes(running), started_at_ms: 0,
+          status: "todo"
+        });
+        await api(`/tasks/${encodeURIComponent(task.id)}`, "PATCH", {
+          started_at_ms: startedAt, status: "in_progress"
+        });
+      } catch (error) { showToast(error.message); return; }
+    }
     if (running) commitTimer(running);
-    task.startedAt = Date.now();
+    task.startedAt = startedAt;
     activeTaskId = task.id;
     save();
     showToast(`Засекли время: ${task.title}`);
     render();
   }
 
-  function stopTask(taskId) {
+  async function stopTask(taskId) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task || !task.startedAt) return;
+    if (remoteMode) {
+      try { await api(`/tasks/${encodeURIComponent(taskId)}`, "PATCH", {
+        spent_min: task.spent + elapsedMinutes(task), started_at_ms: 0,
+        status: "todo"
+      }); } catch (error) { showToast(error.message); return; }
+    }
     const mins = commitTimer(task);
     save();
+    if (remoteMode) await refreshServerPlan().catch((error) => showToast(error.message));
     showToast(`Записано ${fmtDur(mins)}`);
     render();
   }
 
-  function finishTask(taskId) {
+  async function finishTask(taskId) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) return;
+    if (remoteMode) {
+      try { await api(`/tasks/${encodeURIComponent(taskId)}`, "PATCH", {
+        status: "done", started_at_ms: 0,
+        spent_min: task.spent + (task.startedAt ? elapsedMinutes(task) : 0)
+      }); }
+      catch (error) { showToast(error.message); return; }
+    }
     if (task.startedAt) commitTimer(task);
     task.done = true;
     save();
+    if (remoteMode) await refreshServerPlan().catch((error) => showToast(error.message));
     showToast("Готово. Время записано в факт");
     render();
   }
@@ -472,18 +671,42 @@
   }
 
   // --- удаление с возможностью отмены
-  function deleteTask(id) {
+  async function deleteTask(id) {
     const idx = state.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
     const removed = state.tasks[idx];
+    if (remoteMode) {
+      try { await api(`/tasks/${encodeURIComponent(id)}`, "DELETE"); }
+      catch (error) { showToast(error.message); return; }
+    }
     const splitBefore = state.splits[id];
     state.tasks.splice(idx, 1);
     delete state.splits[id];
     save();
+    if (remoteMode) await refreshServerPlan().catch((error) => showToast(error.message));
     render();
     showToast(`Удалено: ${removed.title}`, {
       label: "Отменить",
-      onAction: () => {
+      onAction: async () => {
+        if (remoteMode) {
+          try {
+            const restored = await api("/tasks", "POST", {
+              title: removed.title, due_at: `${removed.due}T23:59:00`,
+              estimated_min: removed.estimated, splittable: removed.splittable,
+              priority: removed.priority
+            });
+            if (removed.done || removed.spent || removed.startedAt) {
+              await api(`/tasks/${encodeURIComponent(restored.id)}`, "PATCH", {
+                status: removed.done ? "done" : removed.startedAt ? "in_progress" : "todo",
+                spent_min: removed.spent || 0,
+                started_at_ms: removed.startedAt || 0
+              });
+            }
+            await reloadRemote();
+            showToast("Восстановлено");
+          } catch (error) { showToast(error.message); }
+          return;
+        }
         state.tasks.splice(idx, 0, removed);
         if (splitBefore !== undefined) state.splits[id] = splitBefore;
         save();
@@ -493,16 +716,29 @@
     });
   }
 
-  function deleteEvent(id) {
+  async function deleteEvent(id) {
     const idx = state.events.findIndex((e) => e.id === id);
     if (idx < 0) return;
     const removed = state.events[idx];
+    if (remoteMode) {
+      try { await api(`/events/${encodeURIComponent(id)}`, "DELETE"); }
+      catch (error) { showToast(error.message); return; }
+    }
     state.events.splice(idx, 1);
     save();
+    if (remoteMode) await refreshServerPlan().catch((error) => showToast(error.message));
     render();
     showToast(`Удалено: ${removed.title}`, {
       label: "Отменить",
-      onAction: () => {
+      onAction: async () => {
+        if (remoteMode) {
+          try {
+            await api("/events", "POST", eventPayload(removed, removed.seriesDate || removed.onlyDate || selectedDate));
+            await reloadRemote();
+            showToast("Восстановлено");
+          } catch (error) { showToast(error.message); }
+          return;
+        }
         state.events.splice(idx, 0, removed);
         save();
         render();
@@ -539,6 +775,9 @@
       }
     });
     render();
+    if (remoteMode && (next === "today" || next === "planb")) {
+      refreshServerPlan().then(render).catch((error) => showToast(error.message));
+    }
     appRoot().scrollTop = 0;
   }
 
@@ -677,7 +916,7 @@
         </svg>
         Не хватает ${fmtDur(plan.shortage)}
       </h2>
-      <p class="conflict-text">${dueText.charAt(0).toUpperCase() + dueText.slice(1)}: в плане не помещается ${fmtDur(plan.shortage)}. Это не про «соберись», а про время.</p>
+      <p class="conflict-text">${remoteMode && plan.conflict ? escapeHTML(plan.conflict.explanation) : `${dueText.charAt(0).toUpperCase() + dueText.slice(1)}: в плане не помещается ${fmtDur(plan.shortage)}. Это не про «соберись», а про время.`}</p>
       <button class="btn btn-danger" type="button" id="openPlanB">Собрать План Б</button>`;
     $("#openPlanB").addEventListener("click", () => setScreen("planb"));
   }
@@ -954,7 +1193,7 @@
 
   function renderPlanB() {
     const plan = planFor(selectedDate);
-    const alts = alternativesFor(plan);
+    const alts = remoteMode ? serverAlternatives : alternativesFor(plan);
     const body = $("#planbBody");
 
     if (!plan.shortage) {
@@ -968,7 +1207,7 @@
       return;
     }
 
-    const task = [...plan.unplaced].sort((a, b) => b.need - a.need)[0].task;
+    const task = [...plan.unplaced].sort((a, b) => b.need - a.need)[0]?.task;
     const maxBar = Math.max(plan.shortage, 1);
 
     const cards = alts.map((alt, index) => `
@@ -1210,9 +1449,47 @@
     return ok;
   }
 
-  function submitDeal(event) {
+  async function submitDeal(event) {
     event.preventDefault();
     if (!validateForm()) return;
+
+    if (remoteMode) {
+      const button = $("#saveDeal");
+      button.disabled = true;
+      try {
+        if (sheetType === "task") {
+          const payload = {
+            title: $("#taskTitle").value.trim(),
+            due_at: `${$("#taskDue").value}T23:59:00`,
+            estimated_min: Number($("#taskEst").value),
+            splittable: $("#taskSplit").checked,
+            priority: ($("#priorityChips .chip[aria-pressed='true']") || {}).dataset?.priority || "normal"
+          };
+          await api(editingId ? `/tasks/${encodeURIComponent(editingId)}` : "/tasks",
+            editingId ? "PATCH" : "POST", payload);
+        } else {
+          const existing = state.events.find((item) => item.id === editingId);
+          const payload = eventPayload({
+            title: $("#eventTitle").value.trim(),
+            category: $("#eventCategory").value,
+            start: $("#eventStart").value,
+            end: $("#eventEnd").value,
+            travelBefore: Number($("#eventTravel").value) || 0,
+            travelAfter: Number($("#eventTravelAfter").value) || 0,
+            movable: $("#eventMovable").checked,
+            weekdays: selectedWeekdays.slice().sort((a, b) => a - b)
+          }, existing?.seriesDate || existing?.onlyDate || selectedDate);
+          await api(editingId ? `/events/${encodeURIComponent(editingId)}` : "/events",
+            editingId ? "PATCH" : "POST", payload);
+        }
+        const wasEditing = Boolean(editingId);
+        await reloadRemote();
+        closeSheet();
+        showToast(wasEditing ? "Изменения сохранены" : "Дело добавлено в план");
+      } catch (error) { showToast(error.message); }
+      finally { button.disabled = false; }
+      return;
+    }
 
     if (sheetType === "task") {
       const priority = ($("#priorityChips .chip[aria-pressed='true']") || {}).dataset?.priority || "normal";
@@ -1419,7 +1696,7 @@
 
   $("#onboardingSkip").addEventListener("click", skipOnboarding);
 
-  $("#saveSettings").addEventListener("click", () => {
+  $("#saveSettings").addEventListener("click", async () => {
     const dayEnd = $("#setDayEnd").value || "21:00";
     const brk = Number($("#setBreak").value);
     if (toMin(dayEnd) < 12 * 60) {
@@ -1430,10 +1707,19 @@
       showToast("Перерыв — от 0 до 180 минут");
       return;
     }
+    if (remoteMode) {
+      try {
+        await api("/me", "PATCH", {
+          day_end: dayEnd, break_after_school_min: Math.round(brk),
+          notifications_enabled: $("#setNotify").checked
+        });
+      } catch (error) { showToast(error.message); return; }
+    }
     state.settings.dayEnd = dayEnd;
     state.settings.breakAfterSchool = Math.round(brk);
     state.settings.notifications = $("#setNotify").checked;
     save();
+    if (remoteMode) await refreshServerPlan().catch((error) => showToast(error.message));
     showToast("Настройки сохранены");
     render();
   });
@@ -1455,7 +1741,14 @@
 
   $("#resetCancel").addEventListener("click", () => resetCard.close());
 
-  $("#resetConfirmYes").addEventListener("click", () => {
+  $("#resetConfirmYes").addEventListener("click", async () => {
+    const reconnect = remoteMode;
+    if (remoteMode) {
+      try { await api("/me/data", "DELETE"); }
+      catch (error) { showToast(error.message); return; }
+      remoteMode = false;
+      apiToken = null;
+    }
     const theme = state.settings.theme;
     state = initialState();
     state.settings.theme = theme;
@@ -1466,6 +1759,7 @@
     resetCard.close();
     render();
     showToast("Данные сброшены");
+    if (reconnect) connectMax();
   });
 
   document.addEventListener("keydown", (e) => {
@@ -1504,4 +1798,5 @@
   }
 
   window.__tbReady = true;
+  connectMax();
 })();
