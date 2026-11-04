@@ -19,8 +19,19 @@ from __future__ import annotations
 import asyncio
 import os
 
-from bot.max_bot import main as run_bot
-from bot.miniapp_host import DemoHost
+try:
+    from bot.max_bot import main as run_bot
+    from bot.miniapp_host import DemoHost
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        f"Не хватает зависимости: {exc.name}.\n"
+        "Установи их одной командой:\n"
+        "  Windows:        .\\run.ps1\n"
+        "  Linux / macOS:  ./run.sh\n"
+        "Или вручную:\n"
+        "  python -m venv .venv\n"
+        "  .venv\\Scripts\\pip install -r requirements.txt"
+    ) from exc
 
 
 def _start_demo_host() -> DemoHost | None:

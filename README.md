@@ -17,15 +17,39 @@
 
 ## Запуск бота
 
-1. Получи токен: [business.max.ru](https://business.max.ru/self) → **Чат-боты** →
-   нужный бот → **⋮ → Настройки** → значок копирования у поля с токеном.
-2. Впиши токен в файл **`.env`** в корне проекта:
+Склонируй репозиторий и запусти один скрипт — он сам создаст окружение,
+установит зависимости, создаст `.env` и попросит токен:
+
+```powershell
+cd TimeBalanceBot
+.\run.ps1
+```
+
+Если PowerShell блокирует скрипт:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run.ps1
+```
+
+Токен нужен от бота MAX: [business.max.ru](https://business.max.ru/self) →
+**Чат-боты** → нужный бот → **⋮ → Настройки** → значок копирования у поля
+с токеном. Скрипт запишет его в `.env` — этот файл не попадает в git.
+
+На Linux / macOS:
+
+```bash
+./run.sh
+```
+
+### Вручную
+
+1. Получи токен и впиши его в `.env` (создай из `.env.example`):
 
    ```env
    MAX_BOT_TOKEN=вставь_токен_сюда
    ```
 
-3. Установи зависимости и запусти:
+2. Установи зависимости и запусти:
 
    ```powershell
    python -m venv .venv
@@ -76,6 +100,8 @@ MAX Bot API работает.
 
 ```text
 code.py                 — точка входа: демо-хостинг мини-приложения + бот
+run.ps1                 — запуск в один шаг для Windows
+run.sh                  — запуск в один шаг для Linux / macOS
 bot/max_bot.py          — бот MAX: long polling, /start, /help, кнопка запуска
 bot/miniapp_host.py     — локальный сервер miniapp/ + HTTPS-туннель для демо
 certs/                  — сертификаты Минцифры для подключения к MAX API
