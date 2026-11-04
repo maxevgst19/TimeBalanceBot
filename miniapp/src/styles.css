@@ -49,6 +49,15 @@
     --nav-h: 72px;
     --shadow: 0 1px 2px rgba(30, 39, 37, 0.05);
 
+    /* движение: мягкий выход, без рывка на старте и в конце */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+    --dur-fast: 180ms;
+    --dur-base: 260ms;
+    --dur-slow: 420ms;
+    --theme-fade: 400ms;
+
     color-scheme: light;
     font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 16px;
@@ -231,7 +240,7 @@
     text-decoration: none;
     cursor: pointer;
     background: var(--surface);
-    transition: background-color 150ms ease, border-color 150ms ease;
+    transition: background-color var(--dur-fast) var(--ease-soft), border-color var(--dur-fast) var(--ease-soft), box-shadow var(--dur-fast) var(--ease-soft);
   }
 
   .btn-primary { background: var(--primary); color: var(--on-primary); }
@@ -479,7 +488,7 @@
     border-radius: 16px;
     box-shadow: var(--shadow);
     cursor: pointer;
-    transition: background-color 150ms ease;
+    transition: background-color var(--dur-fast) var(--ease-soft);
   }
 
   .week-row:hover { background: var(--surface-hover); }
@@ -535,6 +544,7 @@
     display: block;
     border-radius: 999px;
     background: var(--primary);
+    transition: width var(--dur-slow) var(--ease-out), background-color 280ms var(--ease-soft);
   }
 
   .week-bar i.is-over { background: var(--danger); }
@@ -631,6 +641,7 @@
     height: 100%;
     border-radius: 999px;
     background: var(--danger);
+    transition: width var(--dur-slow) var(--ease-out), background-color 280ms var(--ease-soft);
   }
 
   .cmp-bar i.after { background: var(--primary); }
@@ -701,7 +712,7 @@
     inset: 0;
     border-radius: 999px;
     background: var(--switch-off);
-    transition: background-color 150ms ease;
+    transition: background-color 220ms var(--ease-soft);
   }
   .switch span::after {
     content: "";
@@ -712,7 +723,7 @@
     height: 22px;
     border-radius: 50%;
     background: #fff;
-    transition: transform 150ms ease;
+    transition: transform 220ms var(--ease-spring);
   }
   .switch input:checked + span { background: var(--primary); }
   .switch input:checked + span::after { transform: translateX(18px); }
@@ -860,11 +871,11 @@
     padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
     background: var(--surface);
     border-radius: 22px 22px 0 0;
-    animation: sheet-in 220ms ease;
+    animation: sheet-in 340ms var(--ease-out);
   }
 
   @keyframes sheet-in {
-    from { transform: translateY(24px); opacity: 0.6; }
+    from { transform: translateY(28px); opacity: 0.7; }
     to { transform: translateY(0); opacity: 1; }
   }
 
@@ -984,7 +995,7 @@
     box-shadow: 0 8px 24px rgba(30, 39, 37, 0.24);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 180ms ease, transform 180ms ease;
+    transition: opacity 240ms var(--ease-soft), transform 260ms var(--ease-out);
   }
 
   .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
@@ -1159,7 +1170,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow);
-  animation: row-in 260ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: row-in var(--dur-slow) var(--ease-out) both;
 }
 
 .row-item.is-done { opacity: 0.6; }
@@ -1199,7 +1210,7 @@
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 140ms ease, color 140ms ease;
+  transition: background-color 180ms var(--ease-soft), color 180ms var(--ease-soft);
 }
 
 .row-btn:hover { background: var(--surface-hover); color: var(--ink); }
@@ -1263,7 +1274,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  transition: background-color 200ms var(--ease-soft), border-color 200ms var(--ease-soft), color 200ms var(--ease-soft);
 }
 
 .day-chip[aria-pressed="true"] {
@@ -1294,7 +1305,7 @@
   justify-content: center;
   padding: 20px;
   background: var(--canvas);
-  animation: fade-in 220ms ease both;
+  animation: fade-in 320ms var(--ease-soft) both;
 }
 
 .onboarding-card {
@@ -1306,7 +1317,7 @@
   border-radius: 24px;
   box-shadow: 0 16px 48px rgba(30, 39, 37, 0.18);
   text-align: center;
-  animation: card-in 340ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: card-in 480ms var(--ease-out) both;
 }
 
 .onboarding-art {
@@ -1314,7 +1325,7 @@
   height: 116px;
   margin: 0 auto 6px;
   color: var(--primary);
-  animation: art-in 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: art-in 560ms var(--ease-spring) both;
 }
 
 .onboarding-art svg { width: 100%; height: 100%; display: block; }
@@ -1353,7 +1364,7 @@
   height: 7px;
   border-radius: 999px;
   background: var(--line);
-  transition: width 220ms ease, background-color 220ms ease;
+  transition: width 320ms var(--ease-out), background-color 280ms var(--ease-soft);
 }
 
 .onboarding-dots span.is-active {
@@ -1399,17 +1410,17 @@
    ============================================================ */
 
 @keyframes screen-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: none; }
 }
 
 @keyframes block-in {
-  from { opacity: 0; transform: translateX(-8px) scaleY(0.94); }
+  from { opacity: 0; transform: translateX(-10px) scaleY(0.96); }
   to { opacity: 1; transform: none; }
 }
 
 @keyframes row-in {
-  from { opacity: 0; transform: translateY(7px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -1419,12 +1430,12 @@
 }
 
 @keyframes card-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 
 @keyframes art-in {
-  from { opacity: 0; transform: scale(0.86); }
+  from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: none; }
 }
 
@@ -1433,14 +1444,27 @@
   50% { box-shadow: 0 0 0 5px transparent; }
 }
 
-.screen-enter { animation: screen-in 280ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+/* Плавная смена темы.
+   transition включается только на время переключения: постоянный
+   transition на всех элементах замедляет прокрутку и гасит анимации. */
+html.is-theme-fading,
+html.is-theme-fading *,
+html.is-theme-fading *::before,
+html.is-theme-fading *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow, opacity;
+  transition-duration: var(--theme-fade);
+  transition-timing-function: var(--ease-soft);
+  transition-delay: 0ms !important;
+}
 
-.blk { animation: block-in 300ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.screen-enter { animation: screen-in var(--dur-slow) var(--ease-out) both; }
+
+.blk { animation: block-in var(--dur-slow) var(--ease-out) both; }
 
 .blk.is-running { animation: running-pulse 2s ease-in-out infinite; }
 
 .week-row,
-.alt { animation: row-in 280ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.alt { animation: row-in var(--dur-slow) var(--ease-out) both; }
 
 .btn,
 .nav-add,
@@ -1474,5 +1498,12 @@
   .onboarding-card,
   .onboarding-art {
     animation: none !important;
+  }
+
+  html.is-theme-fading,
+  html.is-theme-fading *,
+  html.is-theme-fading *::before,
+  html.is-theme-fading *::after {
+    transition-duration: 0.01ms !important;
   }
 }

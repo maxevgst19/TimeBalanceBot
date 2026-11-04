@@ -163,6 +163,7 @@
   let editingId = null;
   let activeTaskId = null;
   let toastTimer = null;
+  let themeFadeTimer = null;
   let selectedWeekdays = [];
   let onboardStep = 0;
 
@@ -171,10 +172,14 @@
 
   function applyTheme() {
     const theme = state.settings.theme || "auto";
-    document.documentElement.dataset.theme = theme;
+    const root = document.documentElement;
+    root.dataset.theme = theme;
     const isDark = theme === "dark" || (theme === "auto" && DARK_QUERY && DARK_QUERY.matches);
     const meta = $('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", isDark ? "#12181A" : "#F7F8F6");
+    root.classList.add("is-theme-fading");
+    window.clearTimeout(themeFadeTimer);
+    themeFadeTimer = window.setTimeout(() => root.classList.remove("is-theme-fading"), 500);
   }
 
   if (DARK_QUERY && DARK_QUERY.addEventListener) {
