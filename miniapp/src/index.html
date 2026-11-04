@@ -1,5 +1,5 @@
-<!DOCTYPE html>
-<html lang="ru">
+﻿<!DOCTYPE html>
+<html lang="ru" data-theme="auto">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -35,6 +35,12 @@
       </ul>
       <div class="timeline" id="timeline" role="list" aria-label="Расписание дня"></div>
     </div>
+
+    <h2 class="section-title">Дела <span id="taskCount"></span></h2>
+    <div class="list" id="taskList"></div>
+
+    <h2 class="section-title">Занятия <span id="eventCount"></span></h2>
+    <div class="list" id="eventList"></div>
 
     <h2 class="section-title">Итог дня</h2>
     <dl class="summary" id="summary"></dl>
@@ -86,6 +92,16 @@
           <input class="input" type="number" id="setBreak" min="0" max="180" step="5" inputmode="numeric" value="30">
           <p class="hint">Отдых остаётся на шкале отдельным блоком.</p>
         </div>
+
+        <div class="field">
+          <span class="field-label" id="themeLabel">Тема оформления</span>
+          <div class="chips" id="themeChips" role="group" aria-labelledby="themeLabel">
+            <button class="chip" type="button" data-theme="auto" aria-pressed="true">Как в системе</button>
+            <button class="chip" type="button" data-theme="light" aria-pressed="false">Светлая</button>
+            <button class="chip" type="button" data-theme="dark" aria-pressed="false">Тёмная</button>
+          </div>
+        </div>
+
         <div class="switch-row">
           <label class="field-label" for="setNotify">Уведомления в чате</label>
           <span class="switch">
@@ -168,6 +184,7 @@
     <form id="addForm" novalidate>
       <!-- Задание -->
       <div class="fields" id="fieldsTask">
+        <div class="templates" id="taskTemplates" role="group" aria-label="Шаблоны заданий"></div>
         <div class="field">
           <label for="taskTitle">Название</label>
           <input class="input" id="taskTitle" type="text" maxlength="120" autocomplete="off"
@@ -205,6 +222,7 @@
 
       <!-- Занятие -->
       <div class="fields" id="fieldsEvent" hidden>
+        <div class="templates" id="eventTemplates" role="group" aria-label="Шаблоны занятий"></div>
         <div class="field">
           <label for="eventTitle">Название</label>
           <input class="input" id="eventTitle" type="text" maxlength="120" autocomplete="off"
@@ -231,14 +249,22 @@
           </select>
         </div>
         <div class="field">
-          <label for="eventTravel">Дорога в одну сторону, мин</label>
-          <input class="input" id="eventTravel" type="number" min="0" max="240" step="5"
-                 inputmode="numeric" value="0">
+          <span class="field-label" id="weekdayLabel">Дни недели</span>
+          <div class="weekday-chips" id="weekdayChips" role="group" aria-labelledby="weekdayLabel"></div>
+          <p class="field-error" id="weekdayErr"></p>
+          <p class="hint">Отметь все дни, когда это занятие повторяется.</p>
         </div>
-        <div class="field">
-          <label for="eventDate">Дата</label>
-          <input class="input" id="eventDate" type="date">
-          <p class="hint">Занятие повторится в этот день недели.</p>
+        <div class="row-2">
+          <div class="field">
+            <label for="eventTravel">Дорога туда, мин</label>
+            <input class="input" id="eventTravel" type="number" min="0" max="240" step="5"
+                   inputmode="numeric" value="0">
+          </div>
+          <div class="field">
+            <label for="eventTravelAfter">Дорога обратно, мин</label>
+            <input class="input" id="eventTravelAfter" type="number" min="0" max="240" step="5"
+                   inputmode="numeric" value="0">
+          </div>
         </div>
         <label class="switch-row" for="eventMovable">
           <span class="field-label">Можно перенести</span>
@@ -251,9 +277,25 @@
 
       <div class="form-foot">
         <button class="btn btn-primary btn-block" type="submit" id="saveDeal">Сохранить</button>
+        <button class="btn btn-outline btn-block" type="button" id="deleteDeal" hidden>Удалить</button>
         <p class="form-note" id="formNote">Три поля — и дело появится на шкале.</p>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ================= ОНБОРДИНГ ================= -->
+<div class="onboarding" id="onboarding" hidden>
+  <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div class="onboarding-art" id="onboardingArt" aria-hidden="true"></div>
+    <p class="onboarding-step" id="onboardingStep">Шаг 1 из 3</p>
+    <h2 id="onboardingTitle">Это твой реальный день</h2>
+    <p class="onboarding-text" id="onboardingText">
+      Занятия, дорога, задания и отдых — на одной шкале времени.
+    </p>
+    <div class="onboarding-dots" id="onboardingDots" aria-hidden="true"></div>
+    <button class="btn btn-primary btn-block" id="onboardingNext" type="button">Дальше</button>
+    <button class="onboarding-skip" id="onboardingSkip" type="button">Пропустить</button>
   </div>
 </div>
 

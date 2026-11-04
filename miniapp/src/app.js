@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   "use strict";
 
   // ---------------------------------------------------------------- утилиты
@@ -6,8 +6,8 @@
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const pad = (n) => String(n).padStart(2, "0");
   const toMin = (s) => {
-    const [h, m] = s.split(":").map(Number);
-    return h * 60 + m;
+    const [h, m] = String(s).split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
   };
   const toHM = (m) => `${pad(Math.floor(m / 60) % 24)}:${pad(Math.round(m) % 60)}`;
   const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -23,6 +23,12 @@
     return d.getHours() * 60 + d.getMinutes();
   };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const dowOf = (dateStr) => {
+    const d = parseISO(dateStr).getDay();
+    return d === 0 ? 7 : d;
+  };
+  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
   const fmtDur = (m) => {
     m = Math.max(0, Math.round(m));
     const h = Math.floor(m / 60);
@@ -31,13 +37,7 @@
     if (h) return `${h} ч`;
     return `${r} мин`;
   };
-  const fmtDurShort = (m) => {
-    const h = Math.floor(m / 60);
-    const r = m % 60;
-    if (h && r) return `${h} ч ${r} мин`;
-    if (h) return `${h} ч`;
-    return `${r} мин`;
-  };
+  const fmtDurShort = fmtDur;
   const WEEKDAYS = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
   const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
   const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля",
@@ -53,17 +53,88 @@
   };
   const categoryLabel = { school: "Школа", extra: "Кружки", personal: "Личное" };
 
+  // Дни недели в порядке пн..вс (в state храним 1..7, где 7 — воскресенье)
+  const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 7];
+  const WEEK_SHORT_BY_NUM = { 1: "пн", 2: "вт", 3: "ср", 4: "чт", 5: "пт", 6: "сб", 7: "вс" };
+
+  const weekdaysLabel = (days) => {
+    if (!Array.isArray(days) || !days.length) return "без повторов";
+    const sorted = days.slice().sort((a, b) => a - b);
+    if (sorted.length === 7) return "каждый день";
+    if (sorted.join(",") === "1,2,3,4,5") return "по будням";
+    return sorted.map((d) => WEEK_SHORT_BY_NUM[d] || "?").join(", ");
+  };
+
+  // ---------------------------------------------------------------- шаблоны
+  const TASK_TEMPLATES = [
+    { label: "Домашка", title: "Домашнее задание", estimated: 60 },
+    { label: "Чтение", title: "Чтение", estimated: 30 },
+    { label: "Проект", title: "Проект", estimated: 90 },
+    { label: "Повторение", title: "Повторить тему", estimated: 25 }
+  ];
+
+  const EVENT_TEMPLATES = [
+    { label: "Школа", title: "Школа", category: "school", start: "08:30", end: "14:00", weekdays: [1, 2, 3, 4, 5] },
+    { label: "Секция", title: "Секция", category: "extra", start: "17:00", end: "18:30", weekdays: [] },
+    { label: "Репетитор", title: "Репетитор", category: "extra", start: "16:00", end: "17:00", weekdays: [] }
+  ];
+
   // ---------------------------------------------------------------- данные
   const STORE_KEY = "timebalance.frontend.v2";
   const DAY_START = 7 * 60;
 
   function initialState() {
     return {
-      settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true },
+      settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true, theme: "auto" },
       events: [],
       tasks: [],
       moved: {},
-      splits: {}
+      splits: {},
+      meta: { onboarded: false }
+    };
+  }
+
+  function normalizeTask(t) {
+    return {
+      id: t.id || uid("t"),
+      title: String(t.title || "Задание").slice(0, 120),
+      due: t.due || todayISO(),
+      estimated: Number(t.estimated) || 30,
+      splittable: t.splittable !== false,
+      priority: t.priority === "high" ? "high" : "normal",
+      done: Boolean(t.done),
+      startedAt: typeof t.startedAt === "number" ? t.startedAt : null,
+      spent: Number(t.spent) || 0
+    };
+  }
+
+  function normalizeEvent(e) {
+    const days = Array.isArray(e.weekdays) && e.weekdays.length
+      ? e.weekdays.filter((d) => d >= 1 && d <= 7)
+      : [1];
+    return {
+      id: e.id || uid("e"),
+      title: String(e.title || "Занятие").slice(0, 120),
+      category: e.category || "extra",
+      weekdays: days.length ? days : [1],
+      start: e.start || "16:00",
+      end: e.end || "17:00",
+      travelBefore: Number(e.travelBefore) || 0,
+      travelAfter: Number(e.travelAfter) || 0,
+      movable: Boolean(e.movable)
+    };
+  }
+
+  function normalize(data) {
+    const base = initialState();
+    if (!data || typeof data !== "object") return base;
+    return {
+      settings: Object.assign(base.settings, data.settings || {}),
+      events: Array.isArray(data.events) ? data.events.map(normalizeEvent) : [],
+      tasks: Array.isArray(data.tasks) ? data.tasks.map(normalizeTask) : [],
+      moved: data.moved && typeof data.moved === "object" ? data.moved : {},
+      splits: data.splits && typeof data.splits === "object" ? data.splits : {},
+      meta: Object.assign(base.meta, data.meta || {})
     };
   }
 
@@ -71,9 +142,7 @@
     try {
       const raw = localStorage.getItem(STORE_KEY);
       if (!raw) return null;
-      const data = JSON.parse(raw);
-      if (!data || !data.settings || !Array.isArray(data.events) || !Array.isArray(data.tasks)) return null;
-      return data;
+      return normalize(JSON.parse(raw));
     } catch (err) {
       return null;
     }
@@ -91,8 +160,28 @@
   let screen = "today";
   let selectedDate = todayISO();
   let sheetType = "task";
+  let editingId = null;
   let activeTaskId = null;
   let toastTimer = null;
+  let selectedWeekdays = [];
+  let onboardStep = 0;
+
+  // ---------------------------------------------------------------- тема
+  const DARK_QUERY = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  function applyTheme() {
+    const theme = state.settings.theme || "auto";
+    document.documentElement.dataset.theme = theme;
+    const isDark = theme === "dark" || (theme === "auto" && DARK_QUERY && DARK_QUERY.matches);
+    const meta = $('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", isDark ? "#12181A" : "#F7F8F6");
+  }
+
+  if (DARK_QUERY && DARK_QUERY.addEventListener) {
+    DARK_QUERY.addEventListener("change", () => {
+      if ((state.settings.theme || "auto") === "auto") applyTheme();
+    });
+  }
 
   // ---------------------------------------------------------------- шкала
   function gaps(occupied, start, end) {
@@ -122,6 +211,12 @@
       }
     }
     return out;
+  }
+
+  // Остаток работы: оценка минус уже потраченное время (план против факта).
+  function remainingFor(task) {
+    if (hasOwn(state.splits, task.id)) return state.splits[task.id];
+    return Math.max(0, task.estimated - (task.spent || 0));
   }
 
   function planFor(dateStr) {
@@ -175,9 +270,7 @@
     const unplaced = [];
 
     for (const t of tasks) {
-      let need = Object.prototype.hasOwnProperty.call(state.splits, t.id)
-        ? state.splits[t.id]
-        : t.estimated;
+      let need = remainingFor(t);
       if (need <= 0) continue;
 
       if (!t.splittable) {
@@ -194,12 +287,12 @@
 
       for (const w of work) {
         if (need <= 0) break;
-        const cap = w.to - w.from;
-        if (cap < 15) continue;
+        const capw = w.to - w.from;
+        if (capw < 15) continue;
         // Если окно короче на считаные минуты, лучше взять следующее,
         // чем оставить на шкале огрызок меньше 15 минут.
-        if (need > cap && need - cap < 15) continue;
-        const use = Math.min(cap, need);
+        if (need > capw && need - capw < 15) continue;
+        const use = Math.min(capw, need);
         placed.push({ kind: "task", title: t.title, from: w.from, to: w.from + use, sourceId: t.id, category: "task" });
         w.from += use;
         need -= use;
@@ -232,9 +325,7 @@
     const alts = [];
     const splitTask = splitCandidate(plan);
     if (splitTask) {
-      const need = Object.prototype.hasOwnProperty.call(state.splits, splitTask.id)
-        ? state.splits[splitTask.id]
-        : splitTask.estimated;
+      const need = remainingFor(splitTask);
       const keep = Math.max(20, Math.min(30, Math.round(need / 2 / 5) * 5));
       const freed = Math.min(plan.shortage, need - keep);
       alts.push({
@@ -252,7 +343,7 @@
     }
 
     const movable = state.events.find((e) => {
-      const dow = parseISO(plan.dateStr).getDay() === 0 ? 7 : parseISO(plan.dateStr).getDay();
+      const dow = dowOf(plan.dateStr);
       return e.movable && e.weekdays.includes(dow) && !(state.moved[plan.dateStr] || {})[e.id];
     });
     if (movable) {
@@ -287,17 +378,14 @@
       const plan = planFor(selectedDate);
       const task = splitCandidate(plan);
       if (task) {
-        const need = Object.prototype.hasOwnProperty.call(state.splits, task.id)
-          ? state.splits[task.id]
-          : task.estimated;
+        const need = remainingFor(task);
         const keep = Math.max(20, Math.min(30, Math.round(need / 2 / 5) * 5));
         state.splits[task.id] = keep;
         save();
         showToast("План обновлён: часть задания перенесена на завтра");
       }
     } else if (alt.id === "move") {
-      const plan = planFor(selectedDate);
-      const dow = parseISO(selectedDate).getDay() === 0 ? 7 : parseISO(selectedDate).getDay();
+      const dow = dowOf(selectedDate);
       const event = state.events.find((e) => e.movable && e.weekdays.includes(dow));
       if (event) {
         state.moved[selectedDate] = state.moved[selectedDate] || {};
@@ -311,17 +399,116 @@
     setScreen("today");
   }
 
+  // --- отметки выполнения и таймер «план против факта»
   function toggleTaskDone(taskId) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) return;
     task.done = !task.done;
+    if (task.done && task.startedAt) {
+      commitTimer(task);
+    }
     save();
     showToast(task.done ? "Отмечено выполненным" : "Дело возвращено в план");
     render();
   }
 
+  function commitTimer(task) {
+    if (!task.startedAt) return 0;
+    const mins = Math.max(1, Math.round((Date.now() - task.startedAt) / 60000));
+    task.spent = (task.spent || 0) + mins;
+    task.startedAt = null;
+    return mins;
+  }
+
+  function startTask(taskId) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const running = state.tasks.find((t) => t.startedAt && t.id !== task.id);
+    if (running) commitTimer(running);
+    task.startedAt = Date.now();
+    activeTaskId = task.id;
+    save();
+    showToast(`Засекли время: ${task.title}`);
+    render();
+  }
+
+  function stopTask(taskId) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task || !task.startedAt) return;
+    const mins = commitTimer(task);
+    save();
+    showToast(`Записано ${fmtDur(mins)}`);
+    render();
+  }
+
+  function finishTask(taskId) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    if (task.startedAt) commitTimer(task);
+    task.done = true;
+    save();
+    showToast("Готово. Время записано в факт");
+    render();
+  }
+
+  function elapsedLabel(startedAt) {
+    const secs = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  function tickTimers() {
+    $$("[data-timer]").forEach((el) => {
+      const task = state.tasks.find((t) => t.id === el.dataset.timer);
+      if (task && task.startedAt) el.textContent = elapsedLabel(task.startedAt);
+    });
+  }
+
+  // --- удаление с возможностью отмены
+  function deleteTask(id) {
+    const idx = state.tasks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const removed = state.tasks[idx];
+    const splitBefore = state.splits[id];
+    state.tasks.splice(idx, 1);
+    delete state.splits[id];
+    save();
+    render();
+    showToast(`Удалено: ${removed.title}`, {
+      label: "Отменить",
+      onAction: () => {
+        state.tasks.splice(idx, 0, removed);
+        if (splitBefore !== undefined) state.splits[id] = splitBefore;
+        save();
+        render();
+        showToast("Восстановлено");
+      }
+    });
+  }
+
+  function deleteEvent(id) {
+    const idx = state.events.findIndex((e) => e.id === id);
+    if (idx < 0) return;
+    const removed = state.events[idx];
+    state.events.splice(idx, 1);
+    save();
+    render();
+    showToast(`Удалено: ${removed.title}`, {
+      label: "Отменить",
+      onAction: () => {
+        state.events.splice(idx, 0, removed);
+        save();
+        render();
+        showToast("Восстановлено");
+      }
+    });
+  }
+
   // ---------------------------------------------------------------- отрисовка
   function render() {
+    applyTheme();
     document.body.dataset.screen = screen;
     $$("[data-screen]").forEach((btn) => {
       if (btn.dataset.screen === screen) btn.setAttribute("aria-current", "page");
@@ -337,7 +524,14 @@
   function setScreen(next) {
     screen = next;
     $$("#screen-today, #screen-week, #screen-planb, #screen-profile").forEach((sec) => {
-      sec.hidden = sec.id !== `screen-${next}`;
+      const active = sec.id === `screen-${next}`;
+      sec.hidden = !active;
+      if (active) {
+        sec.classList.remove("screen-enter");
+        // перезапуск анимации перехода
+        void sec.offsetWidth;
+        sec.classList.add("screen-enter");
+      }
     });
     render();
     appRoot().scrollTop = 0;
@@ -361,6 +555,8 @@
     renderNow(plan, isToday);
     renderConflict(plan);
     renderTimeline(plan, isToday);
+    renderTaskList();
+    renderEventList();
     renderSummary(plan);
   }
 
@@ -374,6 +570,28 @@
 
   function renderNow(plan, isToday) {
     const card = $("#nowCard");
+    const running = state.tasks.find((t) => t.startedAt);
+
+    // Идёт засечённое время — карточка показывает таймер.
+    if (running) {
+      card.innerHTML = `
+        <p class="now-label">Идёт работа</p>
+        <h2 class="now-title">${escapeHTML(running.title)}</h2>
+        <p class="now-note">Время записывается в факт. Можно поставить паузу.</p>
+        <div class="now-foot">
+          <span class="now-time"><span data-timer="${escapeAttr(running.id)}">${elapsedLabel(running.startedAt)}</span><small>идёт сейчас</small></span>
+          <span class="now-actions">
+            <button class="btn btn-outline" type="button" data-stop="${escapeAttr(running.id)}">Пауза</button>
+            <button class="btn btn-primary" type="button" data-finish="${escapeAttr(running.id)}">Готово</button>
+          </span>
+        </div>`;
+      const stopBtn = $("[data-stop]", card);
+      if (stopBtn) stopBtn.addEventListener("click", () => stopTask(running.id));
+      const finBtn = $("[data-finish]", card);
+      if (finBtn) finBtn.addEventListener("click", () => finishTask(running.id));
+      return;
+    }
+
     const ref = isToday ? nowMin() : DAY_START;
     const upcoming = plan.blocks
       .filter((b) => (b.kind === "task" || b.kind === "event") && b.to > ref)
@@ -422,10 +640,8 @@
 
     const btn = $("[data-now-action]", card);
     btn.addEventListener("click", () => {
-      if (isTask) {
-        activeTaskId = upcoming.sourceId;
-        showToast(`Начали: ${upcoming.title} · ${fmtDur(duration)}`);
-        renderTimeline(plan, isToday);
+      if (isTask && upcoming.sourceId) {
+        startTask(upcoming.sourceId);
       } else {
         showToast(`${upcoming.title} · ${toHM(upcoming.from)}–${toHM(upcoming.to)}`);
       }
@@ -490,7 +706,7 @@
       parts.push(`<div class="hour" style="top:${top}px"><span class="hour-label">${toHM(m)}</span></div>`);
     }
 
-    for (const b of plan.blocks) {
+    plan.blocks.forEach((b, index) => {
       const dur = b.to - b.from;
       const top = (b.from - DAY_START) * PX_PER_MIN;
       const h = Math.max(8, dur * PX_PER_MIN - 4);
@@ -504,14 +720,17 @@
         : categoryLabel[b.category] || "Занятие";
       const compact = h < 38;
       const tiny = h < 18;
+      const editable = (b.kind === "task" || b.kind === "event") && b.sourceId;
+      const isRunning = b.kind === "task" && b.sourceId && state.tasks.some((t) => t.id === b.sourceId && t.startedAt);
       parts.push(`
-        <div class="blk ${kindClass}${compact ? " blk--compact" : ""}${tiny ? " blk--tiny" : ""}${b.sourceId && b.sourceId === activeTaskId ? " is-active" : ""}"
-             style="top:${top}px;height:${h}px" role="listitem"
+        <div class="blk ${kindClass}${compact ? " blk--compact" : ""}${tiny ? " blk--tiny" : ""}${b.sourceId && b.sourceId === activeTaskId ? " is-active" : ""}${isRunning ? " is-running" : ""}"
+             style="top:${top}px;height:${h}px;animation-delay:${Math.min(index * 18, 260)}ms" role="listitem"
+             ${editable ? `data-edit-id="${escapeAttr(b.sourceId)}" data-edit-kind="${b.kind}" tabindex="0"` : ""}
              aria-label="${escapeAttr(label)} ${escapeAttr(b.title)}, ${toHM(b.from)}–${toHM(b.to)}, ${fmtDur(dur)}">
           <span class="blk-title">${escapeHTML(b.title)}</span>
           ${compact ? "" : `<span class="blk-meta">${toHM(b.from)}–${toHM(b.to)} · ${fmtDur(dur)}</span>`}
         </div>`);
-    }
+    });
 
     for (const g of plan.free) {
       const dur = g.to - g.from;
@@ -534,6 +753,111 @@
     }
 
     timeline.innerHTML = parts.join("");
+
+    // Нажатие на блок открывает правку этого дела
+    $$("[data-edit-id]", timeline).forEach((blk) => {
+      const open = () => openSheet(blk.dataset.editKind === "task" ? "task" : "event", blk.dataset.editId);
+      blk.addEventListener("click", open);
+      blk.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      });
+    });
+  }
+
+  // --- список дел с редактированием и удалением
+  function renderTaskList() {
+    const list = $("#taskList");
+    const tasks = state.tasks.slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return a.due.localeCompare(b.due) || a.title.localeCompare(b.title);
+    });
+    $("#taskCount").textContent = tasks.length ? `${tasks.length}` : "";
+
+    if (!tasks.length) {
+      list.innerHTML = `
+        <div class="card empty">
+          <p>Дел пока нет. Добавь первое — оно появится на шкале.</p>
+          <button class="btn btn-primary" type="button" data-add-task>Добавить задание</button>
+        </div>`;
+      $("[data-add-task]", list).addEventListener("click", () => openSheet("task"));
+      return;
+    }
+
+    list.innerHTML = tasks.map((t, index) => {
+      const left = remainingFor(t);
+      const running = Boolean(t.startedAt);
+      const meta = [
+        t.due === todayISO() ? "срок сегодня" : `до ${shortDate(t.due)}`,
+        fmtDur(t.estimated),
+        t.spent ? `факт ${fmtDur(t.spent)}` : "",
+        !t.done && left !== t.estimated ? `осталось ${fmtDur(left)}` : ""
+      ].filter(Boolean).join(" · ");
+
+      return `
+        <div class="row-item${t.done ? " is-done" : ""}${running ? " is-running" : ""}"
+             style="animation-delay:${Math.min(index * 24, 240)}ms">
+          <button class="check" type="button" data-done="${escapeAttr(t.id)}"
+                  aria-pressed="${t.done ? "true" : "false"}"
+                  aria-label="${t.done ? "Вернуть в план" : "Отметить выполненным"}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="row-main">
+            <p class="row-title">${escapeHTML(t.title)}</p>
+            <p class="row-meta">${escapeHTML(meta)}</p>
+          </div>
+          <div class="row-actions">
+            ${t.done ? "" : (running
+              ? `<button class="row-btn row-btn--stop" type="button" data-stop="${escapeAttr(t.id)}" aria-label="Пауза">❚❚</button>`
+              : `<button class="row-btn row-btn--play" type="button" data-start="${escapeAttr(t.id)}" aria-label="Засечь время">▶</button>`)}
+            <button class="row-btn" type="button" data-edit="${escapeAttr(t.id)}" aria-label="Изменить">✎</button>
+            <button class="row-btn row-btn--danger" type="button" data-del="${escapeAttr(t.id)}" aria-label="Удалить">✕</button>
+          </div>
+        </div>`;
+    }).join("");
+
+    $$("[data-done]", list).forEach((b) => b.addEventListener("click", () => toggleTaskDone(b.dataset.done)));
+    $$("[data-start]", list).forEach((b) => b.addEventListener("click", () => startTask(b.dataset.start)));
+    $$("[data-stop]", list).forEach((b) => b.addEventListener("click", () => stopTask(b.dataset.stop)));
+    $$("[data-edit]", list).forEach((b) => b.addEventListener("click", () => openSheet("task", b.dataset.edit)));
+    $$("[data-del]", list).forEach((b) => b.addEventListener("click", () => deleteTask(b.dataset.del)));
+  }
+
+  // --- список занятий
+  function renderEventList() {
+    const list = $("#eventList");
+    const events = state.events.slice().sort((a, b) => toMin(a.start) - toMin(b.start));
+    $("#eventCount").textContent = events.length ? `${events.length}` : "";
+
+    if (!events.length) {
+      list.innerHTML = `
+        <div class="card empty">
+          <p>Занятий пока нет. Школа, кружок или секция — с повторением по дням.</p>
+          <button class="btn btn-primary" type="button" data-add-event>Добавить занятие</button>
+        </div>`;
+      $("[data-add-event]", list).addEventListener("click", () => openSheet("event"));
+      return;
+    }
+
+    list.innerHTML = events.map((e, index) => `
+      <div class="row-item" style="animation-delay:${Math.min(index * 24, 240)}ms">
+        <span class="cat-dot cat-dot--${escapeAttr(e.category)}" aria-hidden="true"></span>
+        <div class="row-main">
+          <p class="row-title">${escapeHTML(e.title)}</p>
+          <p class="row-meta">${toHM(toMin(e.start))}–${toHM(toMin(e.end))} · ${escapeHTML(weekdaysLabel(e.weekdays))}${e.travelBefore || e.travelAfter ? ` · дорога ${fmtDur((e.travelBefore || 0) + (e.travelAfter || 0))}` : ""}</p>
+        </div>
+        <div class="row-actions">
+          <button class="row-btn" type="button" data-edit="${escapeAttr(e.id)}" aria-label="Изменить">✎</button>
+          <button class="row-btn row-btn--danger" type="button" data-del="${escapeAttr(e.id)}" aria-label="Удалить">✕</button>
+        </div>
+      </div>`).join("");
+
+    $$("[data-edit]", list).forEach((b) => b.addEventListener("click", () => openSheet("event", b.dataset.edit)));
+    $$("[data-del]", list).forEach((b) => b.addEventListener("click", () => deleteEvent(b.dataset.del)));
   }
 
   function renderSummary(plan) {
@@ -543,6 +867,18 @@
     const dueText = nextDue
       ? (nextDue.due === todayISO() ? "сегодня" : shortDate(nextDue.due))
       : "нет";
+
+    const doneTasks = state.tasks.filter((t) => t.done);
+    const estimateDone = doneTasks.reduce((sum, t) => sum + t.estimated, 0);
+    const spentDone = doneTasks.reduce((sum, t) => sum + (t.spent || 0), 0);
+
+    const factCard = doneTasks.length
+      ? `<div class="sum-card">
+           <dt>Оценка / факт</dt>
+           <dd>${fmtDurShort(estimateDone)} / ${fmtDurShort(spentDone)}
+             <small>по ${doneTasks.length} ${plural(doneTasks.length, "делу", "делам", "делам")}</small></dd>
+         </div>`
+      : "";
 
     $("#summary").innerHTML = `
       <div class="sum-card">
@@ -556,7 +892,8 @@
       <div class="sum-card">
         <dt>Ближайший срок</dt>
         <dd>${dueText}<small>${nextDue ? escapeHTML(nextDue.title) : "дел нет"}</small></dd>
-      </div>`;
+      </div>
+      ${factCard}`;
   }
 
   function renderWeek() {
@@ -582,7 +919,7 @@
       const d = parseISO(date);
       const isToday = date === todayISO();
       rows.push(`
-        <button class="week-row" type="button" data-date="${date}">
+        <button class="week-row" type="button" data-date="${date}" style="animation-delay:${i * 30}ms">
           <span class="week-top">
             <span class="week-day">${cap(WEEKDAYS[d.getDay()])}</span>
             <span class="week-date">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
@@ -617,7 +954,7 @@
 
     if (!plan.shortage) {
       body.innerHTML = `
-        <div class="card fact">
+        <div class="card fact fact--ok">
           <p class="fact-title">Всё помещается</p>
           <p class="fact-text">На этот день конфликтов нет — План Б не нужен.</p>
         </div>
@@ -629,8 +966,8 @@
     const task = [...plan.unplaced].sort((a, b) => b.need - a.need)[0].task;
     const maxBar = Math.max(plan.shortage, 1);
 
-    const cards = alts.map((alt) => `
-      <article class="card alt" data-alt="${alt.id}">
+    const cards = alts.map((alt, index) => `
+      <article class="card alt" data-alt="${alt.id}" style="animation-delay:${index * 50}ms">
         <h3>${escapeHTML(alt.title)}</h3>
         <ul class="alt-changes">
           ${alt.changes.map((c) => `<li>${escapeHTML(c)}</li>`).join("")}
@@ -675,13 +1012,110 @@
     $("#setDayEnd").value = state.settings.dayEnd;
     $("#setBreak").value = String(state.settings.breakAfterSchool);
     $("#setNotify").checked = Boolean(state.settings.notifications);
+    const theme = state.settings.theme || "auto";
+    $$("#themeChips .chip").forEach((chip) => {
+      chip.setAttribute("aria-pressed", String(chip.dataset.theme === theme));
+    });
   }
 
   // ---------------------------------------------------------------- лист добавления
-  function openSheet(type) {
+  function renderTemplates() {
+    const taskBox = $("#taskTemplates");
+    taskBox.innerHTML = TASK_TEMPLATES.map((t) =>
+      `<button class="chip chip--tpl" type="button" data-tpl-task="${escapeAttr(t.label)}">${escapeHTML(t.label)}</button>`
+    ).join("");
+    $$("[data-tpl-task]", taskBox).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tpl = TASK_TEMPLATES.find((t) => t.label === btn.dataset.tplTask);
+        if (!tpl) return;
+        $("#taskTitle").value = tpl.title;
+        $("#taskEst").value = String(tpl.estimated);
+        clearErrors();
+        $("#taskTitle").focus();
+      });
+    });
+
+    const eventBox = $("#eventTemplates");
+    eventBox.innerHTML = EVENT_TEMPLATES.map((t) =>
+      `<button class="chip chip--tpl" type="button" data-tpl-event="${escapeAttr(t.label)}">${escapeHTML(t.label)}</button>`
+    ).join("");
+    $$("[data-tpl-event]", eventBox).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tpl = EVENT_TEMPLATES.find((t) => t.label === btn.dataset.tplEvent);
+        if (!tpl) return;
+        $("#eventTitle").value = tpl.title;
+        $("#eventCategory").value = tpl.category;
+        $("#eventStart").value = tpl.start;
+        $("#eventEnd").value = tpl.end;
+        if (tpl.weekdays.length) {
+          selectedWeekdays = tpl.weekdays.slice();
+          renderWeekdayChips();
+        }
+        clearErrors();
+      });
+    });
+  }
+
+  function renderWeekdayChips() {
+    const box = $("#weekdayChips");
+    box.innerHTML = WEEK_ORDER.map((d) =>
+      `<button class="day-chip" type="button" data-day="${d}" aria-pressed="${selectedWeekdays.includes(d) ? "true" : "false"}">${WEEK_SHORT_BY_NUM[d]}</button>`
+    ).join("");
+    $$("[data-day]", box).forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const d = Number(chip.dataset.day);
+        const at = selectedWeekdays.indexOf(d);
+        if (at >= 0) selectedWeekdays.splice(at, 1);
+        else selectedWeekdays.push(d);
+        renderWeekdayChips();
+        $("#weekdayErr").textContent = "";
+      });
+    });
+  }
+
+  function openSheet(type, id) {
     sheetType = type || "task";
-    $("#taskDue").value = selectedDate;
-    $("#eventDate").value = selectedDate;
+    editingId = id || null;
+    selectedWeekdays = [];
+    renderTemplates();
+
+    if (editingId) {
+      if (sheetType === "task") {
+        const task = state.tasks.find((t) => t.id === editingId);
+        if (task) {
+          $("#taskTitle").value = task.title;
+          $("#taskDue").value = task.due;
+          $("#taskEst").value = String(task.estimated);
+          $("#taskSplit").checked = task.splittable;
+          $$("#priorityChips .chip").forEach((c) => {
+            c.setAttribute("aria-pressed", String(c.dataset.priority === task.priority));
+          });
+        }
+      } else {
+        const ev = state.events.find((e) => e.id === editingId);
+        if (ev) {
+          $("#eventTitle").value = ev.title;
+          $("#eventCategory").value = ev.category;
+          $("#eventStart").value = ev.start;
+          $("#eventEnd").value = ev.end;
+          $("#eventTravel").value = String(ev.travelBefore || 0);
+          $("#eventTravelAfter").value = String(ev.travelAfter || 0);
+          $("#eventMovable").checked = ev.movable;
+          selectedWeekdays = ev.weekdays.slice();
+        }
+      }
+    } else {
+      $("#taskDue").value = selectedDate;
+      if (sheetType === "event") selectedWeekdays = [dowOf(selectedDate)];
+    }
+
+    renderWeekdayChips();
+    $("#sheetTitle").textContent = editingId
+      ? (sheetType === "task" ? "Изменить задание" : "Изменить занятие")
+      : "Новое дело";
+    $("#saveDeal").textContent = editingId ? "Сохранить изменения" : "Сохранить";
+    $("#deleteDeal").hidden = !editingId;
+
     $("#sheetBackdrop").hidden = false;
     appRoot().style.overflowY = "hidden";
     setSheetType(sheetType);
@@ -693,10 +1127,15 @@
     $("#sheetBackdrop").hidden = true;
     appRoot().style.overflowY = "";
     $("#addForm").reset();
+    editingId = null;
+    selectedWeekdays = [];
     $("#taskDue").value = selectedDate;
-    $("#eventDate").value = selectedDate;
     $("#taskEst").value = "45";
-    $("#priorityChips").querySelectorAll(".chip").forEach((c) => {
+    $("#eventTravel").value = "0";
+    $("#eventTravelAfter").value = "0";
+    $("#deleteDeal").hidden = true;
+    $("#saveDeal").textContent = "Сохранить";
+    $$("#priorityChips .chip").forEach((c) => {
       c.setAttribute("aria-pressed", c.dataset.priority === "normal" ? "true" : "false");
     });
     clearErrors();
@@ -753,6 +1192,10 @@
         setError("eventTimeErr", "Конец должен быть позже начала");
         ok = false;
       }
+      if (!selectedWeekdays.length) {
+        setError("weekdayErr", "Отметь хотя бы один день недели");
+        ok = false;
+      }
     }
 
     if (!ok) {
@@ -767,36 +1210,127 @@
     if (!validateForm()) return;
 
     if (sheetType === "task") {
-      state.tasks.push({
-        id: `t${Date.now()}`,
+      const priority = ($("#priorityChips .chip[aria-pressed='true']") || {}).dataset?.priority || "normal";
+      const data = {
         title: $("#taskTitle").value.trim(),
         due: $("#taskDue").value,
         estimated: Number($("#taskEst").value),
         splittable: $("#taskSplit").checked,
-        priority: ($("#priorityChips .chip[aria-pressed='true']") || {}).dataset?.priority || "normal",
-        done: false
-      });
-      showToast("Задание добавлено в план");
+        priority
+      };
+
+      if (editingId) {
+        const task = state.tasks.find((t) => t.id === editingId);
+        if (task) {
+          Object.assign(task, data);
+          delete state.splits[task.id];
+        }
+        showToast("Задание изменено");
+      } else {
+        state.tasks.push(normalizeTask(Object.assign({ id: uid("t") }, data)));
+        showToast("Задание добавлено в план");
+      }
     } else {
-      const date = $("#eventDate").value || selectedDate;
-      const dow = parseISO(date).getDay() === 0 ? 7 : parseISO(date).getDay();
-      state.events.push({
-        id: `e${Date.now()}`,
+      const data = {
         title: $("#eventTitle").value.trim(),
         category: $("#eventCategory").value,
-        weekdays: [dow],
+        weekdays: selectedWeekdays.slice().sort((a, b) => a - b),
         start: $("#eventStart").value,
         end: $("#eventEnd").value,
         travelBefore: Number($("#eventTravel").value) || 0,
-        travelAfter: Number($("#eventTravel").value) || 0,
+        travelAfter: Number($("#eventTravelAfter").value) || 0,
         movable: $("#eventMovable").checked
-      });
-      showToast("Занятие добавлено в расписание");
+      };
+
+      if (editingId) {
+        const ev = state.events.find((e) => e.id === editingId);
+        if (ev) Object.assign(ev, data);
+        showToast("Занятие изменено");
+      } else {
+        state.events.push(normalizeEvent(Object.assign({ id: uid("e") }, data)));
+        showToast("Занятие добавлено в расписание");
+      }
     }
 
     save();
     closeSheet();
     render();
+  }
+
+  function deleteFromSheet() {
+    if (!editingId) return;
+    const id = editingId;
+    const kind = sheetType;
+    closeSheet();
+    if (kind === "task") deleteTask(id);
+    else deleteEvent(id);
+  }
+
+  // ---------------------------------------------------------------- онбординг
+  const ONBOARDING_STEPS = [
+    {
+      art: "clock",
+      title: "Это твой реальный день",
+      text: "Занятия, дорога, задания и отдых — на одной шкале времени. Видно, что успеваешь, а что нет."
+    },
+    {
+      art: "plan",
+      title: "Когда не помещается",
+      text: "Приложение покажет точный дефицит в минутах и предложит «План Б» — варианты без чувства вины."
+    },
+    {
+      art: "check",
+      title: "План и факт",
+      text: "Засекай время на задании. Через несколько дел станет видно, насколько точны твои оценки."
+    }
+  ];
+
+  const ART = {
+    clock: `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <circle cx="60" cy="60" r="42" stroke="currentColor" stroke-width="3" opacity="0.35"/>
+      <path d="M60 34v26l18 12" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="60" r="4" fill="currentColor"/>
+    </svg>`,
+    plan: `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <rect x="24" y="30" width="72" height="14" rx="7" fill="currentColor" opacity="0.7"/>
+      <rect x="24" y="54" width="46" height="14" rx="7" fill="currentColor" opacity="0.45"/>
+      <rect x="24" y="78" width="60" height="14" rx="7" fill="currentColor" opacity="0.25"/>
+    </svg>`,
+    check: `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <circle cx="60" cy="60" r="40" stroke="currentColor" stroke-width="3" opacity="0.35"/>
+      <path d="M42 61l12 12 24-26" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`
+  };
+
+  function renderOnboarding() {
+    const step = ONBOARDING_STEPS[onboardStep];
+    $("#onboardingArt").innerHTML = ART[step.art] || "";
+    $("#onboardingStep").textContent = `Шаг ${onboardStep + 1} из ${ONBOARDING_STEPS.length}`;
+    $("#onboardingTitle").textContent = step.title;
+    $("#onboardingText").textContent = step.text;
+    $("#onboardingNext").textContent = onboardStep === ONBOARDING_STEPS.length - 1 ? "Начать" : "Дальше";
+    $("#onboardingDots").innerHTML = ONBOARDING_STEPS.map((_, i) =>
+      `<span class="${i === onboardStep ? "is-active" : ""}"></span>`
+    ).join("");
+  }
+
+  function openOnboarding() {
+    onboardStep = 0;
+    renderOnboarding();
+    $("#onboarding").hidden = false;
+  }
+
+  function finishOnboarding() {
+    $("#onboarding").hidden = true;
+    state.meta.onboarded = true;
+    save();
+    openSheet("task");
+  }
+
+  function skipOnboarding() {
+    $("#onboarding").hidden = true;
+    state.meta.onboarded = true;
+    save();
   }
 
   // ---------------------------------------------------------------- вспомогательное
@@ -807,12 +1341,29 @@
   }
   const escapeAttr = escapeHTML;
 
-  function showToast(message) {
+  function showToast(message, action) {
     const el = $("#toast");
-    el.textContent = message;
+    el.innerHTML = "";
+    const text = document.createElement("span");
+    text.textContent = message;
+    el.appendChild(text);
+
+    if (action) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "toast-action";
+      btn.textContent = action.label;
+      btn.addEventListener("click", () => {
+        el.classList.remove("is-visible");
+        window.clearTimeout(toastTimer);
+        action.onAction();
+      });
+      el.appendChild(btn);
+    }
+
     el.classList.add("is-visible");
     window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => el.classList.remove("is-visible"), 3200);
+    toastTimer = window.setTimeout(() => el.classList.remove("is-visible"), action ? 6000 : 3200);
   }
 
   // ---------------------------------------------------------------- события
@@ -840,7 +1391,28 @@
     });
   });
 
+  $("#themeChips").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    state.settings.theme = chip.dataset.theme;
+    save();
+    applyTheme();
+    renderProfile();
+  });
+
   $("#addForm").addEventListener("submit", submitDeal);
+  $("#deleteDeal").addEventListener("click", deleteFromSheet);
+
+  $("#onboardingNext").addEventListener("click", () => {
+    if (onboardStep >= ONBOARDING_STEPS.length - 1) {
+      finishOnboarding();
+      return;
+    }
+    onboardStep += 1;
+    renderOnboarding();
+  });
+
+  $("#onboardingSkip").addEventListener("click", skipOnboarding);
 
   $("#saveSettings").addEventListener("click", () => {
     const dayEnd = $("#setDayEnd").value || "21:00";
@@ -871,7 +1443,7 @@
       $("#resetConfirm").hidden = true;
       $("#resetData").hidden = false;
       $("#resetData").focus();
-    },
+    }
   };
 
   $("#resetData").addEventListener("click", () => resetCard.open());
@@ -879,7 +1451,10 @@
   $("#resetCancel").addEventListener("click", () => resetCard.close());
 
   $("#resetConfirmYes").addEventListener("click", () => {
+    const theme = state.settings.theme;
     state = initialState();
+    state.settings.theme = theme;
+    state.meta.onboarded = true;
     selectedDate = todayISO();
     activeTaskId = null;
     save();
@@ -910,9 +1485,18 @@
   });
 
   // ---------------------------------------------------------------- старт
+  applyTheme();
+  renderTemplates();
+  renderWeekdayChips();
   $("#taskDue").value = selectedDate;
-  $("#eventDate").value = selectedDate;
   setSheetType("task");
   render();
+
+  window.setInterval(tickTimers, 1000);
+
+  if (!state.meta.onboarded) {
+    openOnboarding();
+  }
+
   window.__tbReady = true;
 })();

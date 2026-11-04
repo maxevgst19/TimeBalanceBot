@@ -63,9 +63,10 @@ def gz(data: bytes) -> int:
 
 
 def main() -> None:
-    html = (SRC / "index.html").read_text(encoding="utf-8")
-    css = rcssmin.cssmin((SRC / "styles.css").read_text(encoding="utf-8"))
-    js = rjsmin.jsmin((SRC / "app.js").read_text(encoding="utf-8"))
+    # utf-8-sig: BOM в начале styles.css ломает первый селектор :root при встраивании
+    html = (SRC / "index.html").read_text(encoding="utf-8-sig")
+    css = rcssmin.cssmin((SRC / "styles.css").read_text(encoding="utf-8-sig"))
+    js = rjsmin.jsmin((SRC / "app.js").read_text(encoding="utf-8-sig"))
 
     if "</style" in css.lower() or "</script" in js.lower():
         raise SystemExit("В исходниках найден закрывающий тег, встраивание небезопасно")
