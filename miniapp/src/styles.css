@@ -1,13 +1,13 @@
-:root {
+﻿:root {
     --canvas: #F7F8F6;
     --surface: #FFFFFF;
     --ink: #1E2725;
     --muted: #64716D;
     --line: #E3E9E5;
-    --primary: #326B5C;
-    --primary-soft: #E5F3ED;
+    --primary: #2B5EA7;
+    --primary-soft: #E4EBF7;
     --school: #3C6F9A;
-    --extra: #7A60A8;
+    --extra: #5B83CC;
     --task: #B67535;
     --rest: #5C8A72;
     --travel: #77848C;
@@ -17,8 +17,8 @@
 
     /* производные оттенки — отдельными токенами, чтобы тёмная тема
        переопределяла их в одном месте, а не по всем правилам */
-    --primary-hover: #2A5A4D;
-    --primary-soft-hover: #D8ECE3;
+    --primary-hover: #264E86;
+    --primary-soft-hover: #D6E3F2;
     --danger-hover: #973E33;
     --surface-hover: #F2F5F3;
     --bar-bg: #EDF1EF;
@@ -31,9 +31,9 @@
     --travel-ink: #33403C;
     --check-line: #C9D5CF;
     --overlay: rgba(30, 39, 37, 0.45);
-    --ring: rgba(50, 107, 92, 0.35);
-    --ring-soft: rgba(50, 107, 92, 0.15);
-    --shadow-primary: rgba(50, 107, 92, 0.26);
+    --ring: rgba(43, 94, 167, 0.35);
+    --ring-soft: rgba(43, 94, 167, 0.15);
+    --shadow-primary: rgba(43, 94, 167, 0.26);
 
     /* текст на цветных поверхностях и тост */
     --on-primary: #FFFFFF;
@@ -1068,10 +1068,10 @@
   --ink: #E8EDEB;
   --muted: #9BA8A4;
   --line: #2A3438;
-  --primary: #6FB99E;
-  --primary-soft: #1C2C28;
+  --primary: #6FA8E8;
+  --primary-soft: #17263B;
   --school: #4A7BA6;
-  --extra: #7E66AC;
+  --extra: #6F86CE;
   --task: #AC7A3E;
   --rest: #54876B;
   --travel: #8E9BA2;
@@ -1079,8 +1079,8 @@
   --danger-soft: #2C1E1C;
   --danger-line: #4A2E2B;
 
-  --primary-hover: #7FC8AD;
-  --primary-soft-hover: #22352F;
+  --primary-hover: #8FC0EC;
+  --primary-soft-hover: #1D2C40;
   --danger-hover: #E5847B;
   --surface-hover: #212B2F;
   --bar-bg: #232D31;
@@ -1093,8 +1093,8 @@
   --travel-ink: #C7D3CF;
   --check-line: #3A4644;
   --overlay: rgba(0, 0, 0, 0.62);
-  --ring: rgba(111, 185, 158, 0.5);
-  --ring-soft: rgba(111, 185, 158, 0.22);
+  --ring: rgba(111, 168, 232, 0.5);
+  --ring-soft: rgba(111, 168, 232, 0.22);
   --shadow-primary: rgba(0, 0, 0, 0.45);
 
   --on-primary: #0E1A16;
@@ -1115,10 +1115,10 @@
     --ink: #E8EDEB;
     --muted: #9BA8A4;
     --line: #2A3438;
-    --primary: #6FB99E;
-    --primary-soft: #1C2C28;
+    --primary: #6FA8E8;
+    --primary-soft: #17263B;
     --school: #4A7BA6;
-    --extra: #7E66AC;
+    --extra: #6F86CE;
     --task: #AC7A3E;
     --rest: #54876B;
     --travel: #8E9BA2;
@@ -1126,8 +1126,8 @@
     --danger-soft: #2C1E1C;
     --danger-line: #4A2E2B;
 
-    --primary-hover: #7FC8AD;
-    --primary-soft-hover: #22352F;
+    --primary-hover: #8FC0EC;
+    --primary-soft-hover: #1D2C40;
     --danger-hover: #E5847B;
     --surface-hover: #212B2F;
     --bar-bg: #232D31;
@@ -1140,8 +1140,8 @@
     --travel-ink: #C7D3CF;
     --check-line: #3A4644;
     --overlay: rgba(0, 0, 0, 0.62);
-    --ring: rgba(111, 185, 158, 0.5);
-    --ring-soft: rgba(111, 185, 158, 0.22);
+    --ring: rgba(111, 168, 232, 0.5);
+    --ring-soft: rgba(111, 168, 232, 0.22);
     --shadow-primary: rgba(0, 0, 0, 0.45);
 
     --on-primary: #0E1A16;
