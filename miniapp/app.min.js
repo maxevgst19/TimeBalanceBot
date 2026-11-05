@@ -1332,7 +1332,14 @@
     });
   }
 
-  // ------------------------------------------------- калькулятор «а если добавить?»
+  // ------------------------------------------------- проверка окна «а если добавить?»
+  const pluralDays = (n) => {
+    const m10 = n % 10;
+    const m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return "день";
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "дня";
+    return "дней";
+  };
   function renderCalcChips() {
     const box = $("#calcChips");
     if (!box) return;
@@ -1397,8 +1404,8 @@
       const freed = Math.min(gapMin, plan.freeMin);
       const freeAfter = Math.max(0, plan.freeMin - freed);
       const note = gapMin <= 0
-        ? "Окно занято полностью — новое сюда не влезет без сдвига."
-        : `Свободного времени станет меньше на ${fmtDurShort(freed)} — останется ${fmtDurShort(freeAfter)}.`;
+        ? "Окно занято полностью — новое дело не вписывается без сдвига."
+        : `Новое займёт ${fmtDurShort(freed)} свободного времени, останется ${fmtDurShort(freeAfter)}.`;
 
       daysTotal += 1;
       conflicts += hits.length + dueTasks.length;
@@ -1422,9 +1429,9 @@
 
     const overflow = daysTotal - rows.length;
     out.innerHTML = `
-      <p class="calc-verdict">Дней с конфликтами: ${daysTotal}. Конфликтов: ${conflicts} — детали ниже.</p>
+      <p class="calc-verdict">Найдено ${daysTotal} ${pluralDays(daysTotal)} с занятым окном — что именно мешает, ниже.</p>
       ${rows.join("")}
-      ${overflow > 0 ? `<p class="calc-note">…и ещё на ${overflow} днях похожая ситуация.</p>` : ""}`;
+      ${overflow > 0 ? `<p class="calc-note">…и ещё на ${overflow} ${pluralDays(overflow)} похожая ситуация.</p>` : ""}`;
   }
 
   function openSheet(type, id) {

@@ -638,7 +638,7 @@
     display: grid;
     gap: 6px;
     padding: 12px;
-    background: var(--bg, #F7F9F8);
+    background: var(--seg-bg);
     border: 1px solid var(--line);
     border-radius: 12px;
   }

@@ -648,7 +648,7 @@
     display: grid;
     gap: 6px;
     padding: 12px;
-    background: var(--bg, #F7F9F8);
+    background: var(--seg-bg);
     border: 1px solid var(--line);
     border-radius: 12px;
   }
@@ -1824,8 +1824,8 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     <div class="week-list" id="weekList"></div>
 
     <div class="card calc">
-      <h3 class="calc-title">Калькулятор: а если добавить?</h3>
-      <p class="hint">Выбери дни и время — покажем, что встанет на это окно и что придётся сдвинуть.</p>
+      <h3 class="calc-title">Впишется ли новое дело?</h3>
+      <p class="hint">Выбери дни и время — покажем, что уже занимает окно и что придётся сдвинуть.</p>
       <div class="weekday-chips" id="calcChips" role="group" aria-label="Дни калькулятора"></div>
       <div class="calc-times">
         <label class="field-label" for="calcFrom">С
@@ -2100,7 +2100,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=985763c2e3" defer></script>
+<script src="app.min.js?v=1b914cc442" defer></script>
 <script>
 (function () {
   "use strict";
@@ -2114,7 +2114,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=985763c2e3&r=" + tries;
+    s.src = "app.min.js?v=1b914cc442&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);
