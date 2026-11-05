@@ -191,6 +191,8 @@ def run() -> None:
         host=settings.host,
         port=settings.port,
         log_level="info",
+        # psycopg на Windows требует SelectorEventLoop, а не ProactorEventLoop
+        loop=lambda use_subprocess=False: asyncio.SelectorEventLoop(),
     )
 
 
