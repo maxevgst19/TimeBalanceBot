@@ -1404,7 +1404,7 @@
       const freed = Math.min(gapMin, plan.freeMin);
       const freeAfter = Math.max(0, plan.freeMin - freed);
       const note = gapMin <= 0
-        ? "Окно занято полностью — новое дело не вписывается: что-то придётся сдвинуть."
+        ? "Окно занято полностью — новое дело не вписывается: что-то придётся перенести."
         : `Новое займёт ${fmtDurShort(freed)} свободного времени, останется ${fmtDurShort(freeAfter)}.`;
 
       daysTotal += 1;
@@ -1423,7 +1423,7 @@
     }
 
     if (!daysTotal) {
-      out.innerHTML = '<p class="calc-ok">Окно свободно — можно добавлять, ничего сдвигать не придётся.</p>';
+      out.innerHTML = '<p class="calc-ok">Окно свободно — можно добавлять, ничего переносить не придётся.</p>';
       return;
     }
 
