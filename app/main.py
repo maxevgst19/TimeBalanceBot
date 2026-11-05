@@ -55,7 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
                 bot = Bot(token=settings.bot_token)
                 dispatcher = Dispatcher(bot)
-                register_handlers(dispatcher, settings)
+                register_handlers(dispatcher, settings, app.state.db)
                 app.state.bot = bot
                 app.state.background.append(
                     asyncio.create_task(run_polling(bot, dispatcher))

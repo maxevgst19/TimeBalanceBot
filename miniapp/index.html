@@ -588,6 +588,84 @@
     padding: 2px 8px;
   }
 
+  /* ---------- Калькулятор «а если добавить?» ---------- */
+
+  .card.calc {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .calc-title { font-size: 16px; font-weight: 700; }
+
+  .card.calc .hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .calc-times {
+    display: flex;
+    gap: 10px;
+  }
+
+  .calc-times label {
+    flex: 1;
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .calc-result {
+    display: grid;
+    gap: 10px;
+    padding-top: 4px;
+    border-top: 1px solid var(--line);
+  }
+
+  .calc-verdict {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .calc-ok {
+    margin: 0;
+    font-size: 14px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .calc-day {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    background: var(--bg, #F7F9F8);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .calc-day-name { margin: 0; font-size: 14px; font-weight: 700; }
+
+  .calc-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .calc-note { margin: 0; font-size: 13px; color: var(--muted); }
+
   /* ---------- План Б ---------- */
 
   .back-btn {
@@ -1744,6 +1822,22 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
       <p class="screen-sub">Где нагрузка выше и сколько времени остаётся.</p>
     </header>
     <div class="week-list" id="weekList"></div>
+
+    <div class="card calc">
+      <h3 class="calc-title">Калькулятор: а если добавить?</h3>
+      <p class="hint">Выбери дни и время — покажем, что встанет на это окно и что придётся сдвинуть.</p>
+      <div class="weekday-chips" id="calcChips" role="group" aria-label="Дни калькулятора"></div>
+      <div class="calc-times">
+        <label class="field-label" for="calcFrom">С
+          <input class="input" type="time" id="calcFrom" value="16:00">
+        </label>
+        <label class="field-label" for="calcTo">По
+          <input class="input" type="time" id="calcTo" value="17:30">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" type="button" id="calcRun">Что придётся сдвинуть?</button>
+      <div class="calc-result" id="calcResult" hidden></div>
+    </div>
   </section>
 
   <!-- ================= ПЛАН Б ================= -->
@@ -2006,7 +2100,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=5092dbf8c7" defer></script>
+<script src="app.min.js?v=985763c2e3" defer></script>
 <script>
 (function () {
   "use strict";
@@ -2020,7 +2114,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=5092dbf8c7&r=" + tries;
+    s.src = "app.min.js?v=985763c2e3&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);

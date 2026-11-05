@@ -57,6 +57,22 @@
       <p class="screen-sub">Где нагрузка выше и сколько времени остаётся.</p>
     </header>
     <div class="week-list" id="weekList"></div>
+
+    <div class="card calc">
+      <h3 class="calc-title">Калькулятор: а если добавить?</h3>
+      <p class="hint">Выбери дни и время — покажем, что встанет на это окно и что придётся сдвинуть.</p>
+      <div class="weekday-chips" id="calcChips" role="group" aria-label="Дни калькулятора"></div>
+      <div class="calc-times">
+        <label class="field-label" for="calcFrom">С
+          <input class="input" type="time" id="calcFrom" value="16:00">
+        </label>
+        <label class="field-label" for="calcTo">По
+          <input class="input" type="time" id="calcTo" value="17:30">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" type="button" id="calcRun">Что придётся сдвинуть?</button>
+      <div class="calc-result" id="calcResult" hidden></div>
+    </div>
   </section>
 
   <!-- ================= ПЛАН Б ================= -->

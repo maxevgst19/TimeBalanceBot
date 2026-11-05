@@ -309,6 +309,7 @@
   let toastTimer = null;
   let themeFadeTimer = null;
   let selectedWeekdays = [];
+  let calcDays = [];
   let onboardStep = 0;
 
   // ---------------------------------------------------------------- тема
@@ -1331,6 +1332,101 @@
     });
   }
 
+  // ------------------------------------------------- калькулятор «а если добавить?»
+  function renderCalcChips() {
+    const box = $("#calcChips");
+    if (!box) return;
+    box.innerHTML = WEEK_ORDER.map((d) =>
+      `<button class="day-chip" type="button" data-calc-day="${d}" aria-pressed="${calcDays.includes(d) ? "true" : "false"}">${WEEK_SHORT_BY_NUM[d]}</button>`
+    ).join("");
+    $$("[data-calc-day]", box).forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const d = Number(chip.dataset.calcDay);
+        const at = calcDays.indexOf(d);
+        if (at >= 0) calcDays.splice(at, 1);
+        else calcDays.push(d);
+        renderCalcChips();
+      });
+    });
+  }
+
+  function runCalculator() {
+    const out = $("#calcResult");
+    out.hidden = false;
+    const from = toMin($("#calcFrom").value || "00:00");
+    const to = toMin($("#calcTo").value || "00:00");
+
+    if (!calcDays.length) {
+      out.innerHTML = '<p class="hint">Выбери хотя бы один день недели.</p>';
+      return;
+    }
+    if (to <= from) {
+      out.innerHTML = '<p class="hint">Время «По» должно быть позже времени «С».</p>';
+      return;
+    }
+
+    const start = parseISO(todayISO());
+    const rows = [];
+    let conflicts = 0;
+    let daysTotal = 0;
+
+    for (let i = 0; i < 14; i++) {
+      const date = iso(addDays(start, i));
+      const d = parseISO(date);
+      const dow = d.getDay() === 0 ? 7 : d.getDay();
+      if (!calcDays.includes(dow)) continue;
+
+      const plan = planFor(date);
+      const wFrom = Math.max(from, DAY_START);
+      const wTo = Math.min(to, plan.dayEnd);
+      if (wTo <= wFrom) continue;
+
+      const hits = plan.blocks
+        .filter((b) => b.kind !== "free")
+        .filter((b) => Math.max(b.from, wFrom) < Math.min(b.to, wTo))
+        .map((b) => ({ block: b, overlap: Math.min(b.to, wTo) - Math.max(b.from, wFrom) }));
+
+      const dueTasks = state.tasks.filter(
+        (t) => !t.done && t.due === date && remainingFor(t) > 0 &&
+          !hits.some((h) => h.block.sourceId === t.id)
+      );
+      if (!hits.length && !dueTasks.length) continue;
+
+      const clashMin = hits.reduce((sum, h) => sum + h.overlap, 0);
+      const gapMin = Math.max(0, wTo - wFrom - clashMin);
+      const freed = Math.min(gapMin, plan.freeMin);
+      const freeAfter = Math.max(0, plan.freeMin - freed);
+      const note = gapMin <= 0
+        ? "Окно занято полностью — новое сюда не влезет без сдвига."
+        : `Свободного времени станет меньше на ${fmtDurShort(freed)} — останется ${fmtDurShort(freeAfter)}.`;
+
+      daysTotal += 1;
+      conflicts += hits.length + dueTasks.length;
+      if (rows.length >= 6) continue;
+
+      rows.push(`
+        <div class="calc-day">
+          <p class="calc-day-name">${cap(WEEKDAYS[d.getDay()])}, ${d.getDate()} ${MONTHS[d.getMonth()]}</p>
+          <ul class="calc-list">
+            ${hits.map((h) => `<li>«${escapeHTML(h.block.title)}» ${toHM(h.block.from)}–${toHM(h.block.to)} — уже занято ${fmtDurShort(h.overlap)}</li>`).join("")}
+            ${dueTasks.map((t) => `<li>Срок: «${escapeHTML(t.title)}» — около ${fmtDurShort(remainingFor(t))}</li>`).join("")}
+          </ul>
+          <p class="calc-note">${note}</p>
+        </div>`);
+    }
+
+    if (!daysTotal) {
+      out.innerHTML = '<p class="calc-ok">Окно свободно — можно добавлять, ничего сдвигать не придётся.</p>';
+      return;
+    }
+
+    const overflow = daysTotal - rows.length;
+    out.innerHTML = `
+      <p class="calc-verdict">Дней с конфликтами: ${daysTotal}. Конфликтов: ${conflicts} — детали ниже.</p>
+      ${rows.join("")}
+      ${overflow > 0 ? `<p class="calc-note">…и ещё на ${overflow} днях похожая ситуация.</p>` : ""}`;
+  }
+
   function openSheet(type, id) {
     sheetType = type || "task";
     editingId = id || null;
@@ -1811,6 +1907,8 @@
   applyLayout();
   renderTemplates();
   renderWeekdayChips();
+  renderCalcChips();
+  $("#calcRun").addEventListener("click", runCalculator);
   $("#taskDue").value = selectedDate;
   setSheetType("task");
   render();

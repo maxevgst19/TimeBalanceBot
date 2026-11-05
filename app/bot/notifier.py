@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -29,12 +30,33 @@ WEEKDAYS_RU = (
     "воскресенье",
 )
 
+MONTHS_RU = (
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+)
+
 REMINDER_WINDOW_MIN = 15
 
+# «Протухшие» задания: старше STALE_DAYS дней — тихий вопрос вместо свалки.
+STALE_DAYS = 14
+STALE_MAX_PER_CYCLE = 3
 
-async def _send(bot, user_id: int, text: str) -> None:
+# Сколько минут заложить на сборы, когда напоминаем, когда вставать.
+WAKE_PREP_MIN = 20
+
+
+def _ru_date(iso_date: str) -> str:
+    """«2026-10-21» → «21 октября»."""
     try:
-        await bot.send_message(user_id, text=text, format="html")
+        day, month = int(iso_date[8:10]), int(iso_date[5:7])
+        return f"{day} {MONTHS_RU[month - 1]}"
+    except (ValueError, IndexError):
+        return iso_date
+
+
+async def _send(bot, user_id: int, text: str, buttons=None) -> None:
+    try:
+        await bot.send_message(user_id, text=text, format="html", buttons=buttons)
     except Exception:  # noqa: BLE001 - сбой отправки не должен ронять планировщик
         logger.exception("Не удалось отправить уведомление пользователю %s", user_id)
 
@@ -91,6 +113,63 @@ async def check_user(
             f"<b>{block.title}</b> в {format_time(block.starts_at)}.",
         )
         await db.mark_notified(conn, user["id"], "event", key)
+
+    # 3. Когда вставать: вечером — один раз на завтра, по первому делу дня.
+    if now.hour >= settings.wake_hour:
+        tomorrow = today + timedelta(days=1)
+        key = tomorrow.isoformat()
+        if not await db.already_notified(conn, user["id"], "wake", key):
+            busy = sorted(
+                (b for b in plan.blocks
+                 if b.kind != "free" and b.starts_at.date() == tomorrow),
+                key=lambda b: b.starts_at,
+            )
+            if busy:
+                first = busy[0]
+                travel_min = 0
+                first_start = first.starts_at
+                title = first.title
+                if first.kind == "travel":
+                    # Дорога впереди: первое «настоящее» дело — следующий блок.
+                    travel_min = first.minutes
+                    nxt = next((b for b in busy[1:] if b.kind != "travel"), None)
+                    if nxt is not None:
+                        title = nxt.title
+                        first_start = nxt.starts_at
+                wake_at = first.starts_at - timedelta(minutes=WAKE_PREP_MIN)
+                if wake_at > now:
+                    text = (
+                        f"На завтра: первое — <b>{html.escape(title)}</b> "
+                        f"в {format_time(first_start)}"
+                    )
+                    if travel_min:
+                        text += f", в пути {plural_minutes(travel_min)}"
+                    text += f" → вставай в {format_time(wake_at)}."
+                    await _send(bot, max_user_id, text)
+                    await db.mark_notified(conn, user["id"], "wake", key)
+
+    # 4. Протухшие задания: старше двух недель — спросить один раз на срок.
+    tasks = await db.list_tasks(conn, user["id"])
+    cutoff = (today - timedelta(days=STALE_DAYS)).isoformat()
+    stale = [t for t in tasks if t["status"] != "done" and t["due_at"][:10] < cutoff]
+    for task in stale[:STALE_MAX_PER_CYCLE]:
+        key = f"{task['id']}:{task['due_at'][:10]}"
+        if await db.already_notified(conn, user["id"], "stale", key):
+            continue
+        text = (
+            f"Задание висит уже {STALE_DAYS} дней: "
+            f"«{html.escape(task['title'])}».\n"
+            f"Срок был {_ru_date(task['due_at'][:10])}. Ещё актуально?"
+        )
+        buttons = [
+            [
+                {"text": "Перенести на сегодня", "payload": f"stale_move:{task['id']}"},
+                {"text": "Убрать", "payload": f"stale_drop:{task['id']}"},
+            ],
+            [{"text": "Оставить", "payload": f"stale_keep:{task['id']}"}],
+        ]
+        await _send(bot, max_user_id, text, buttons=buttons)
+        await db.mark_notified(conn, user["id"], "stale", key)
 
 
 async def run_notifier(

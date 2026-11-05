@@ -578,6 +578,84 @@
     padding: 2px 8px;
   }
 
+  /* ---------- Калькулятор «а если добавить?» ---------- */
+
+  .card.calc {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .calc-title { font-size: 16px; font-weight: 700; }
+
+  .card.calc .hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .calc-times {
+    display: flex;
+    gap: 10px;
+  }
+
+  .calc-times label {
+    flex: 1;
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .calc-result {
+    display: grid;
+    gap: 10px;
+    padding-top: 4px;
+    border-top: 1px solid var(--line);
+  }
+
+  .calc-verdict {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .calc-ok {
+    margin: 0;
+    font-size: 14px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .calc-day {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    background: var(--bg, #F7F9F8);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .calc-day-name { margin: 0; font-size: 14px; font-weight: 700; }
+
+  .calc-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .calc-note { margin: 0; font-size: 13px; color: var(--muted); }
+
   /* ---------- План Б ---------- */
 
   .back-btn {
