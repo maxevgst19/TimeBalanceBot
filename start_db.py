@@ -2,6 +2,20 @@
 import pathlib
 
 import pgserver
+import pgserver.postgres_server as _ps
+
+# pg_ctl по умолчанию ждёт всего 10 секунд, а первый старт на Windows после
+# принудительного убийства (восстановление + антивирус на файле лога) длиннее —
+# поднимаем порог, чтобы не ловить ложный «Timeout starting server».
+_orig_pg_ctl = _ps.pg_ctl
+
+
+def _patient_pg_ctl(*args, **kwargs):
+    kwargs["timeout"] = max(int(kwargs.get("timeout", 0) or 0), 90)
+    return _orig_pg_ctl(*args, **kwargs)
+
+
+_ps.pg_ctl = _patient_pg_ctl
 
 root = pathlib.Path(__file__).resolve().parent
 srv = pgserver.get_server(str(root / ".pgdata"), cleanup_mode=None)
