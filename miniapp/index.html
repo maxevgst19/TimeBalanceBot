@@ -2100,7 +2100,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=1b914cc442" defer></script>
+<script src="app.min.js?v=c04435edab" defer></script>
 <script>
 (function () {
   "use strict";
@@ -2114,7 +2114,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=1b914cc442&r=" + tries;
+    s.src = "app.min.js?v=c04435edab&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);
