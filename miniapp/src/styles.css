@@ -103,6 +103,18 @@
     padding: 14px 18px calc(var(--nav-h) + 104px);
   }
 
+  html[data-layout="desktop"] .app { max-width: 960px; }
+
+  html[data-layout="desktop"] .bottom-nav {
+    left: 50%;
+    right: auto;
+    width: 100%;
+    max-width: 960px;
+    transform: translateX(-50%);
+  }
+
+  html[data-layout="desktop"] .nav-inner { max-width: 100%; }
+
   @media (min-width: 768px) {
     .app { padding-left: 24px; padding-right: 24px; }
   }

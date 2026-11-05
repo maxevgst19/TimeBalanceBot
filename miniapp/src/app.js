@@ -85,7 +85,7 @@
 
   function initialState() {
     return {
-      settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true, theme: "auto" },
+      settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true, theme: "auto", layout: "mobile" },
       events: [],
       tasks: [],
       moved: {},
@@ -325,6 +325,15 @@
     root.classList.add("is-theme-fading");
     window.clearTimeout(themeFadeTimer);
     themeFadeTimer = window.setTimeout(() => root.classList.remove("is-theme-fading"), 500);
+  }
+
+  function applyLayout() {
+    const layout = state.settings.layout === "desktop" ? "desktop" : "mobile";
+    const root = document.documentElement;
+    root.dataset.layout = layout;
+    $$("#layoutChips .chip").forEach((chip) => {
+      chip.setAttribute("aria-pressed", String(chip.dataset.layout === layout));
+    });
   }
 
   if (DARK_QUERY && DARK_QUERY.addEventListener) {
@@ -750,6 +759,7 @@
   // ---------------------------------------------------------------- отрисовка
   function render() {
     applyTheme();
+    applyLayout();
     document.body.dataset.screen = screen;
     $$("[data-screen]").forEach((btn) => {
       if (btn.dataset.screen === screen) btn.setAttribute("aria-current", "page");
@@ -1260,6 +1270,10 @@
     $$("#themeChips .chip").forEach((chip) => {
       chip.setAttribute("aria-pressed", String(chip.dataset.theme === theme));
     });
+    const layout = state.settings.layout || "mobile";
+    $$("#layoutChips .chip").forEach((chip) => {
+      chip.setAttribute("aria-pressed", String(chip.dataset.layout === layout));
+    });
   }
 
   // ---------------------------------------------------------------- лист добавления
@@ -1682,6 +1696,15 @@
     renderProfile();
   });
 
+  $("#layoutChips").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    state.settings.layout = chip.dataset.layout;
+    save();
+    applyLayout();
+    renderProfile();
+  });
+
   $("#addForm").addEventListener("submit", submitDeal);
   $("#deleteDeal").addEventListener("click", deleteFromSheet);
 
@@ -1785,6 +1808,7 @@
 
   // ---------------------------------------------------------------- старт
   applyTheme();
+  applyLayout();
   renderTemplates();
   renderWeekdayChips();
   $("#taskDue").value = selectedDate;

@@ -113,6 +113,18 @@
     padding: 14px 18px calc(var(--nav-h) + 104px);
   }
 
+  html[data-layout="desktop"] .app { max-width: 960px; }
+
+  html[data-layout="desktop"] .bottom-nav {
+    left: 50%;
+    right: auto;
+    width: 100%;
+    max-width: 960px;
+    transform: translateX(-50%);
+  }
+
+  html[data-layout="desktop"] .nav-inner { max-width: 100%; }
+
   @media (min-width: 768px) {
     .app { padding-left: 24px; padding-right: 24px; }
   }
@@ -1780,6 +1792,15 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
           </div>
         </div>
 
+        <div class="field">
+          <span class="field-label" id="layoutLabel">Размер интерфейса</span>
+          <div class="chips" id="layoutChips" role="group" aria-labelledby="layoutLabel">
+            <button class="chip" type="button" data-layout="mobile" aria-pressed="true">Телефон</button>
+            <button class="chip" type="button" data-layout="desktop" aria-pressed="false">ПК</button>
+          </div>
+          <p class="hint">ПК расширяет интерфейс на весь экран монитора.</p>
+        </div>
+
         <div class="switch-row">
           <label class="field-label" for="setNotify">Уведомления в чате</label>
           <span class="switch">
@@ -1985,7 +2006,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=282b914e57" defer></script>
+<script src="app.min.js?v=5092dbf8c7" defer></script>
 <script>
 (function () {
   "use strict";
@@ -1999,7 +2020,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=282b914e57&r=" + tries;
+    s.src = "app.min.js?v=5092dbf8c7&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);
