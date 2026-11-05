@@ -1,12 +1,12 @@
-"""Точка входа TimeBalance: ``python code.py``.
+"""Точка входа: ``python code.py`` — БД + REST API + бот MAX, одна команда.
 
-Запускает REST API мини-приложения и чат-бот MAX в одном процессе.
-Настройки читаются из переменных окружения — см. ``.env.example``.
+При запуске поднимает локальный PostgreSQL и прописывает DATABASE_URL.
+При завершении процесса (Ctrl+C, остановка в PyCharm, диспетчер задач)
+postgres останавливается и исчезает из диспетчера задач.
 """
 import asyncio
 import sys
 
-from app.main import run
 from dotenv import load_dotenv
 
 if sys.platform == "win32":
@@ -15,4 +15,11 @@ if sys.platform == "win32":
 
 if __name__ == "__main__":
     load_dotenv()
+
+    from dbserver import ensure_server
+
+    ensure_server(cleanup_mode="stop", die_with_process=True)
+
+    from app.main import run
+
     run()
