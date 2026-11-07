@@ -28,27 +28,28 @@ def test_city_events_and_reminder(client, auth, monkeypatch):
     start = datetime.now(timezone.utc) + timedelta(days=2)
 
     async def fake_fetch(path, params, ttl):
-        if path == "/locations/":
-            return [{"slug": "msk", "name": "Москва"}]
-        if path == "/events/42/":
-            return {"id": 42, "title": "Фестиваль", "dates": [{"start": int(start.timestamp())}],
-                    "site_url": "https://kudago.com/msk/event/festival/"}
-        return {"results": [{
-            "id": 42, "title": "Фестиваль", "dates": [{"start": int(start.timestamp())}],
-            "site_url": "https://kudago.com/msk/event/festival/", "price": "бесплатно",
-            "place": {"title": "Парк"},
+        if path == "list_cities":
+            return {"cities": [{"slug": "moscow", "name": "Москва"}]}
+        if path == "get_event":
+            return {"event": {"id": "abc12345", "title": "Фестиваль",
+                    "starts_at": start.isoformat(), "schedule": {"upcoming": []},
+                    "url": "https://spontanno.space/moscow/festival--abc12345"}}
+        return {"events": [{
+            "id": "abc12345", "title": "Фестиваль", "starts_at": start.isoformat(),
+            "url": "https://spontanno.space/moscow/festival--abc12345",
+            "price": {"text": "бесплатно"}, "venue": {"name": "Парк"},
         }]}
 
     monkeypatch.setattr(city_events, "_fetch", fake_fetch)
     cities = client.get("/api/v1/city-events/cities")
-    assert cities.json() == [{"slug": "msk", "name": "Москва"}]
-    events = client.get("/api/v1/city-events", params={"city": "msk"})
+    assert cities.json() == [{"slug": "moscow", "name": "Москва"}]
+    events = client.get("/api/v1/city-events", params={"city": "Москва"})
     assert events.status_code == 200
     assert events.json()[0]["title"] == "Фестиваль"
 
     payload = {
-        "source_id": 42, "city": "msk", "starts_at": start.isoformat(),
-        "title": "Фестиваль", "url": "https://kudago.com/msk/event/festival/",
+        "source_id": "abc12345", "city": "Москва", "starts_at": start.isoformat(),
+        "title": "Фестиваль", "url": "https://spontanno.space/moscow/festival--abc12345",
     }
     assert client.post("/api/v1/city-events/reminders", json=payload).status_code == 401
     created = client.post("/api/v1/city-events/reminders", headers=auth, json=payload)

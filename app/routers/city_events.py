@@ -1,4 +1,4 @@
-"""Афиша KudaGo и напоминания о выбранных мероприятиях."""
+"""Городская афиша СПОНТАННО и напоминания о мероприятиях."""
 from __future__ import annotations
 
 import time
@@ -13,21 +13,29 @@ from .. import db
 from ..deps import api_error, get_conn, get_current_user
 
 router = APIRouter(prefix="/city-events", tags=["City events"])
-BASE = "https://kudago.com/public-api/v1.4"
+MCP_URL = "https://spontanno.space/mcp"
 _cache: dict[str, tuple[float, Any]] = {}
 
 
-async def _fetch(path: str, params: dict[str, Any], ttl: int) -> Any:
-    key = f"{path}:{sorted(params.items())}"
+async def _fetch(tool: str, arguments: dict[str, Any], ttl: int) -> Any:
+    key = f"{tool}:{sorted(arguments.items())}"
     saved = _cache.get(key)
     if saved and saved[0] > time.monotonic():
         return saved[1]
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
-            response = await client.get(BASE + path, params=params)
+        async with httpx.AsyncClient(timeout=12) as client:
+            response = await client.post(
+                MCP_URL,
+                headers={"Accept": "application/json, text/event-stream"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                      "params": {"name": tool, "arguments": arguments}},
+            )
             response.raise_for_status()
-            data = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
+            result = response.json().get("result", {})
+            if result.get("isError") or not result.get("structuredContent"):
+                raise ValueError("Источник вернул ошибку")
+            data = result["structuredContent"]
+    except (httpx.HTTPError, ValueError, KeyError) as exc:
         raise api_error(503, "events_unavailable", "Афиша сейчас недоступна. Попробуй позже.") from exc
     _cache[key] = (time.monotonic() + ttl, data)
     return data
@@ -35,50 +43,42 @@ async def _fetch(path: str, params: dict[str, Any], ttl: int) -> Any:
 
 @router.get("/cities")
 async def cities():
-    data = await _fetch("/locations/", {"lang": "ru", "fields": "slug,name"}, 86400)
-    if not isinstance(data, list):
+    data = await _fetch("list_cities", {"limit": 30}, 3600)
+    if not isinstance(data.get("cities"), list):
         raise api_error(503, "events_unavailable", "Не удалось загрузить список городов")
     return sorted(
-        [{"slug": item["slug"], "name": item["name"]} for item in data
+        [{"slug": item["slug"], "name": item["name"]} for item in data["cities"]
          if item.get("slug") and item.get("name")],
         key=lambda item: item["name"],
     )
 
 
 @router.get("")
-async def events(city: str = Query(pattern=r"^[a-z0-9-]{2,32}$")):
-    city_list = await cities()
-    if city not in {item["slug"] for item in city_list}:
-        raise api_error(422, "validation_error", "Выбери город из списка")
-    now = int(time.time())
-    data = await _fetch("/events/", {
-        "lang": "ru", "location": city, "actual_since": now,
-        "actual_until": now + 45 * 86400, "page_size": 30,
-        "fields": "id,title,dates,site_url,price,place,age_restriction",
-        "expand": "place", "order_by": "-publication_date",
+async def events(city: str = Query(min_length=2, max_length=80)):
+    data = await _fetch("search_events", {
+        "city": city, "when": "week", "sort": "soonest", "limit": 20,
     }, 900)
     result = []
-    for item in data.get("results", []):
-        dates = sorted((d for d in item.get("dates", []) if isinstance(d.get("start"), int)
-                        and d["start"] >= now), key=lambda d: d["start"])
-        if not dates:
+    for item in data.get("events", []):
+        start = item.get("starts_at")
+        if not start:
             continue
-        place = item.get("place") or {}
+        place = item.get("venue") or {}
+        price = item.get("price") or {}
         result.append({
             "id": item["id"], "title": item.get("title") or "Мероприятие",
-            "starts_at": datetime.fromtimestamp(dates[0]["start"], timezone.utc).isoformat(),
-            "dates": [datetime.fromtimestamp(d["start"], timezone.utc).isoformat()
-                      for d in dates[:8]],
-            "place": place.get("title", "") if isinstance(place, dict) else "",
-            "price": item.get("price") or "", "age_restriction": item.get("age_restriction") or "",
-            "url": item.get("site_url") or "",
+            "starts_at": start, "dates": [start],
+            "place": place.get("name", "") if isinstance(place, dict) else "",
+            "price": price.get("text", "") if isinstance(price, dict) else "",
+            "age_restriction": item.get("age") or "",
+            "url": item.get("url") or "",
         })
     return result
 
 
 class ReminderInput(BaseModel):
-    source_id: int = Field(gt=0)
-    city: str = Field(pattern=r"^[a-z0-9-]{2,32}$")
+    source_id: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9-]+$")
+    city: str = Field(min_length=2, max_length=80)
     starts_at: datetime
     title: str = Field(min_length=1, max_length=120)
     url: str = Field(max_length=500)
@@ -99,14 +99,15 @@ async def create_reminder(payload: ReminderInput, conn=Depends(get_conn), user=D
     moment = payload.starts_at.replace(tzinfo=timezone.utc) if payload.starts_at.tzinfo is None else payload.starts_at
     if not now < moment <= now + timedelta(days=366):
         raise api_error(422, "validation_error", "Дата мероприятия должна быть в будущем")
-    if not payload.url.startswith("https://kudago.com/"):
+    if not payload.url.startswith("https://spontanno.space/"):
         raise api_error(422, "validation_error", "Некорректная ссылка на мероприятие")
-    source = await _fetch(f"/events/{payload.source_id}/", {
-        "lang": "ru", "fields": "id,title,dates,site_url,location"
-    }, 900)
-    possible_dates = {int(date["start"]) for date in source.get("dates", [])
-                      if isinstance(date.get("start"), int)}
-    if int(moment.timestamp()) not in possible_dates or source.get("site_url") != payload.url:
+    detail = await _fetch("get_event", {"event": payload.source_id}, 900)
+    source = detail.get("event") or {}
+    possible_dates = {datetime.fromisoformat(date["starts_at"]).timestamp()
+                      for date in source.get("schedule", {}).get("upcoming", [])
+                      if date.get("starts_at")}
+    possible_dates.add(datetime.fromisoformat(source["starts_at"]).timestamp())
+    if moment.timestamp() not in possible_dates or source.get("url") != payload.url:
         raise api_error(422, "validation_error", "Дата или ссылка мероприятия изменилась. Обнови афишу.")
     title = str(source.get("title") or payload.title)[:120]
     reminder_id = db.new_id()

@@ -808,7 +808,6 @@
         const response = await fetch(`${apiBase}/city-events/cities`);
         if (!response.ok) throw new Error("Не удалось загрузить города");
         cityList = await response.json();
-        if (chosenCity && !cityList.some((item) => item.slug === chosenCity)) chosenCity = "";
         cityError = "";
       } catch (error) { cityError = error.message; renderCity(); return; }
     }
@@ -846,9 +845,9 @@
   function renderCity() {
     const select = $("#citySelect");
     if (cityList) {
-      select.innerHTML = `<option value="">Выбери город</option>` + cityList.map((item) =>
-        `<option value="${escapeHTML(item.slug)}">${escapeHTML(item.name)}</option>`).join("");
-      select.value = chosenCity;
+      $("#citySuggestions").innerHTML = cityList.map((item) =>
+        `<option value="${escapeHTML(item.name)}"></option>`).join("");
+      if (document.activeElement !== select) select.value = chosenCity;
     }
     const box = $("#cityEvents");
     if (cityError) {
@@ -861,8 +860,8 @@
     if (!cityEvents.length) { box.innerHTML = `<div class="card city-empty">На ближайшие недели событий пока не нашлось.</div>`; return; }
     box.innerHTML = cityEvents.map((item) => {
       const options = item.dates.map((date) => `<option value="${escapeHTML(date)}">${cityDate(date)}</option>`).join("");
-      const reminded = cityReminders.find((saved) => Number(saved.source_id) === item.id);
-      const details = item.url.startsWith("https://kudago.com/")
+      const reminded = cityReminders.find((saved) => String(saved.source_id) === String(item.id));
+      const details = item.url.startsWith("https://spontanno.space/")
         ? `<a class="city-link" href="${escapeHTML(item.url)}" target="_blank" rel="noopener noreferrer">Подробнее ↗</a>` : "";
       return `<article class="card city-card">
         <span class="city-stamp">АФИША / ${escapeHTML(chosenCity.toUpperCase())}</span>
@@ -872,7 +871,7 @@
         <select class="input" id="cityDate-${item.id}" data-city-date="${item.id}">${options}</select>
         <div class="city-actions">${details}<button class="btn ${reminded ? "btn-outline" : "btn-primary"}" type="button" ${reminded ? `data-unremind="${escapeHTML(reminded.id)}"` : `data-remind="${item.id}"`} ${!remoteMode || !item.url ? "disabled" : ""}>${reminded ? "Убрать напоминание" : "Напомнить"}</button></div>
       </article>`;
-    }).join("") + (!remoteMode ? `<p class="hint city-note">Напоминания в чате доступны при открытии через MAX.</p>` : "");
+    }).join("") + `<p class="hint city-note">Источник: <a href="https://spontanno.space/" target="_blank" rel="noopener noreferrer">СПОНТАННО</a>. Напоминания в чате доступны при открытии через MAX.</p>`;
   }
 
   function appRoot() {
@@ -1853,13 +1852,18 @@
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
 
-  $("#citySelect").addEventListener("change", (event) => {
-    chosenCity = event.target.value;
+  $("#cityShow").addEventListener("click", () => {
+    chosenCity = $("#citySelect").value.trim();
+    if (!chosenCity) { showToast("Введи название города"); return; }
     localStorage.setItem("timebalance.city.v1", chosenCity);
     cityEvents = [];
     cityError = "";
     renderCity();
-    if (chosenCity) loadCityEvents();
+    loadCityEvents();
+  });
+
+  $("#citySelect").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); $("#cityShow").click(); }
   });
 
   $("#cityEvents").addEventListener("click", async (event) => {

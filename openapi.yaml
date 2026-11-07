@@ -270,7 +270,7 @@ paths:
     get:
       tags: [City events]
       security: []
-      summary: Города, доступные в афише KudaGo
+      summary: Города, доступные в афише СПОНТАННО
       responses:
         '200': { description: Список городов }
         '503': { description: Источник временно недоступен }
@@ -304,7 +304,7 @@ paths:
               type: object
               required: [source_id, city, starts_at, title, url]
               properties:
-                source_id: { type: integer }
+                source_id: { type: string }
                 city: { type: string }
                 starts_at: { type: string, format: date-time }
                 title: { type: string }

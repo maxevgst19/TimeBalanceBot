@@ -84,8 +84,10 @@
     </header>
     <div class="card city-picker">
       <label for="citySelect">Мой город</label>
-      <select class="input" id="citySelect"><option value="">Загружаем города…</option></select>
-      <p class="hint">Афиша предоставлена KudaGo. Даты и детали проверяй у организатора.</p>
+      <input class="input" id="citySelect" list="citySuggestions" placeholder="Например, Москва" autocomplete="address-level2">
+      <datalist id="citySuggestions"></datalist>
+      <button class="btn btn-primary city-show" id="cityShow" type="button">Показать события</button>
+      <p class="hint">Афиша СПОНТАННО. Даты и детали проверяй на странице события.</p>
     </div>
     <div id="cityEvents" class="city-events" aria-live="polite"></div>
   </section>

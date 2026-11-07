@@ -1779,6 +1779,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 .nav-btn { min-width: 0; font-size: 11px; }
 .city-picker { padding: 20px; margin: 8px 0 25px; transform: rotate(-.4deg); }
 .city-picker label, .city-card label { display: block; font-weight: 800; margin-bottom: 8px; }
+.city-show { margin: 12px 0 7px; }
 .city-events { display: grid; gap: 23px; padding: 4px 3px 24px; }
 .city-card { position: relative; padding: 25px 19px 18px; }
 .city-card:nth-child(odd) { transform: rotate(.45deg); }
@@ -1880,8 +1881,10 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     </header>
     <div class="card city-picker">
       <label for="citySelect">Мой город</label>
-      <select class="input" id="citySelect"><option value="">Загружаем города…</option></select>
-      <p class="hint">Афиша предоставлена KudaGo. Даты и детали проверяй у организатора.</p>
+      <input class="input" id="citySelect" list="citySuggestions" placeholder="Например, Москва" autocomplete="address-level2">
+      <datalist id="citySuggestions"></datalist>
+      <button class="btn btn-primary city-show" id="cityShow" type="button">Показать события</button>
+      <p class="hint">Афиша СПОНТАННО. Даты и детали проверяй на странице события.</p>
     </div>
     <div id="cityEvents" class="city-events" aria-live="polite"></div>
   </section>
@@ -2152,7 +2155,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=a906d462f6" defer></script>
+<script src="app.min.js?v=be19c22871" defer></script>
 <script>
 (function () {
   "use strict";
@@ -2166,7 +2169,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=a906d462f6&r=" + tries;
+    s.src = "app.min.js?v=be19c22871&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);
