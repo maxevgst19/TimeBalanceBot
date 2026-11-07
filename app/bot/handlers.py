@@ -33,10 +33,6 @@ FALLBACK = (
 )
 
 
-def _app_link(settings: Settings) -> str:
-    return settings.mini_app_url or ""
-
-
 def register_handlers(dp: Dispatcher, settings: Settings) -> None:
     """Регистрирует обработчики. Порядок важен: Dispatcher берёт первый подходящий."""
 
@@ -46,7 +42,7 @@ def register_handlers(dp: Dispatcher, settings: Settings) -> None:
             WELCOME,
             format="html",
             buttons=[
-                [{"text": "Открыть мини-приложение", "payload": "open_app"}],
+                [{"type": "open_app", "text": "Открыть мини-приложение"}],
                 [{"text": "Как это работает", "payload": "about"}],
             ],
         )
@@ -58,19 +54,8 @@ def register_handlers(dp: Dispatcher, settings: Settings) -> None:
             "/start — описание и вход в мини-приложение\n"
             "/help — эта справка",
             format="html",
-            buttons=[[{"text": "Открыть мини-приложение", "payload": "open_app"}]],
+            buttons=[[{"type": "open_app", "text": "Открыть мини-приложение"}]],
         )
-
-    @dp.callback(payloads=["open_app"])
-    async def open_app(cb):
-        await cb.answer()
-        link = _app_link(settings)
-        text = (
-            f'Открывай мини-приложение: <a href="{link}">{link}</a>'
-            if link
-            else "Ссылка на мини-приложение ещё не задана (переменная MINI_APP_URL)."
-        )
-        await cb.reply(text, format="html")
 
     @dp.callback(payloads=["about"])
     async def about(cb):

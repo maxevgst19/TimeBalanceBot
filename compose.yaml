@@ -1,4 +1,22 @@
 services:
+  app:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://timebalance:timebalance_dev@postgres:5432/timebalance
+      HOST: 0.0.0.0
+      PORT: 8000
+      ENABLE_BOT: ${ENABLE_BOT:-true}
+      ENABLE_NOTIFIER: ${ENABLE_NOTIFIER:-true}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:17-alpine
     environment:
