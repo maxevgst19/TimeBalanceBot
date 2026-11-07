@@ -85,7 +85,7 @@
 
   function initialState() {
     return {
-      settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true, theme: "auto" },
+      settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true, theme: "auto", layout: "mobile" },
       events: [],
       tasks: [],
       moved: {},
@@ -205,6 +205,7 @@
   async function reloadRemote() {
     const previousTasks = new Map(state.tasks.map((task) => [task.id, task]));
     const theme = state.settings.theme || "auto";
+    const layout = state.settings.layout || "mobile";
     const meta = state.meta || { onboarded: false };
     const from = iso(addDays(new Date(), -7));
     const to = iso(addDays(new Date(), 23));
@@ -220,7 +221,7 @@
         dayEnd: user.settings.day_end,
         breakAfterSchool: user.settings.break_after_school_min,
         notifications: user.settings.notifications_enabled,
-        theme
+        theme, layout
       },
       events: [...unique.values()].map((event) => ({
         id: event.id, title: event.title, category: event.category,
@@ -316,6 +317,7 @@
   let toastTimer = null;
   let themeFadeTimer = null;
   let selectedWeekdays = [];
+  let calcDays = [];
   let onboardStep = 0;
 
   // ---------------------------------------------------------------- тема
@@ -332,6 +334,15 @@
     root.classList.add("is-theme-fading");
     window.clearTimeout(themeFadeTimer);
     themeFadeTimer = window.setTimeout(() => root.classList.remove("is-theme-fading"), 500);
+  }
+
+  function applyLayout() {
+    const layout = state.settings.layout === "desktop" ? "desktop" : "mobile";
+    const root = document.documentElement;
+    root.dataset.layout = layout;
+    $$("#layoutChips .chip").forEach((chip) => {
+      chip.setAttribute("aria-pressed", String(chip.dataset.layout === layout));
+    });
   }
 
   if (DARK_QUERY && DARK_QUERY.addEventListener) {
@@ -757,6 +768,7 @@
   // ---------------------------------------------------------------- отрисовка
   function render() {
     applyTheme();
+    applyLayout();
     document.body.dataset.screen = screen;
     $$("[data-screen]").forEach((btn) => {
       if (btn.dataset.screen === screen) btn.setAttribute("aria-current", "page");
@@ -1342,6 +1354,10 @@
     $$("#themeChips .chip").forEach((chip) => {
       chip.setAttribute("aria-pressed", String(chip.dataset.theme === theme));
     });
+    const layout = state.settings.layout || "mobile";
+    $$("#layoutChips .chip").forEach((chip) => {
+      chip.setAttribute("aria-pressed", String(chip.dataset.layout === layout));
+    });
   }
 
   // ---------------------------------------------------------------- лист добавления
@@ -1397,6 +1413,108 @@
         $("#weekdayErr").textContent = "";
       });
     });
+  }
+
+  // ------------------------------------------------- проверка окна «а если добавить?»
+  const pluralDays = (n) => {
+    const m10 = n % 10;
+    const m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return "день";
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "дня";
+    return "дней";
+  };
+  function renderCalcChips() {
+    const box = $("#calcChips");
+    if (!box) return;
+    box.innerHTML = WEEK_ORDER.map((d) =>
+      `<button class="day-chip" type="button" data-calc-day="${d}" aria-pressed="${calcDays.includes(d) ? "true" : "false"}">${WEEK_SHORT_BY_NUM[d]}</button>`
+    ).join("");
+    $$("[data-calc-day]", box).forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const d = Number(chip.dataset.calcDay);
+        const at = calcDays.indexOf(d);
+        if (at >= 0) calcDays.splice(at, 1);
+        else calcDays.push(d);
+        renderCalcChips();
+      });
+    });
+  }
+
+  function runCalculator() {
+    const out = $("#calcResult");
+    out.hidden = false;
+    const from = toMin($("#calcFrom").value || "00:00");
+    const to = toMin($("#calcTo").value || "00:00");
+
+    if (!calcDays.length) {
+      out.innerHTML = '<p class="hint">Выбери хотя бы один день недели.</p>';
+      return;
+    }
+    if (to <= from) {
+      out.innerHTML = '<p class="hint">Время «По» должно быть позже времени «С».</p>';
+      return;
+    }
+
+    const start = parseISO(todayISO());
+    const rows = [];
+    let conflicts = 0;
+    let daysTotal = 0;
+
+    for (let i = 0; i < 14; i++) {
+      const date = iso(addDays(start, i));
+      const d = parseISO(date);
+      const dow = d.getDay() === 0 ? 7 : d.getDay();
+      if (!calcDays.includes(dow)) continue;
+
+      const plan = planFor(date);
+      const wFrom = Math.max(from, DAY_START);
+      const wTo = Math.min(to, plan.dayEnd);
+      if (wTo <= wFrom) continue;
+
+      const hits = plan.blocks
+        .filter((b) => b.kind !== "free")
+        .filter((b) => Math.max(b.from, wFrom) < Math.min(b.to, wTo))
+        .map((b) => ({ block: b, overlap: Math.min(b.to, wTo) - Math.max(b.from, wFrom) }));
+
+      const dueTasks = state.tasks.filter(
+        (t) => !t.done && t.due === date && remainingFor(t) > 0 &&
+          !hits.some((h) => h.block.sourceId === t.id)
+      );
+      if (!hits.length && !dueTasks.length) continue;
+
+      const clashMin = hits.reduce((sum, h) => sum + h.overlap, 0);
+      const gapMin = Math.max(0, wTo - wFrom - clashMin);
+      const freed = Math.min(gapMin, plan.freeMin);
+      const freeAfter = Math.max(0, plan.freeMin - freed);
+      const note = gapMin <= 0
+        ? "Окно занято полностью — новое дело не вписывается: что-то придётся перенести."
+        : `Новое займёт ${fmtDurShort(freed)} свободного времени, останется ${fmtDurShort(freeAfter)}.`;
+
+      daysTotal += 1;
+      conflicts += hits.length + dueTasks.length;
+      if (rows.length >= 6) continue;
+
+      rows.push(`
+        <div class="calc-day">
+          <p class="calc-day-name">${cap(WEEKDAYS[d.getDay()])}, ${d.getDate()} ${MONTHS[d.getMonth()]}</p>
+          <ul class="calc-list">
+            ${hits.map((h) => `<li>«${escapeHTML(h.block.title)}» ${toHM(h.block.from)}–${toHM(h.block.to)} — уже занято ${fmtDurShort(h.overlap)}</li>`).join("")}
+            ${dueTasks.map((t) => `<li>Срок: «${escapeHTML(t.title)}» — около ${fmtDurShort(remainingFor(t))}</li>`).join("")}
+          </ul>
+          <p class="calc-note">${note}</p>
+        </div>`);
+    }
+
+    if (!daysTotal) {
+      out.innerHTML = '<p class="calc-ok">Окно свободно — можно добавлять, ничего переносить не придётся.</p>';
+      return;
+    }
+
+    const overflow = daysTotal - rows.length;
+    out.innerHTML = `
+      <p class="calc-verdict">Найдено ${daysTotal} ${pluralDays(daysTotal)} с занятым окном — что именно мешает, ниже.</p>
+      ${rows.join("")}
+      ${overflow > 0 ? `<p class="calc-note">…и ещё на ${overflow} ${pluralDays(overflow)} похожая ситуация.</p>` : ""}`;
   }
 
   function openSheet(type, id) {
@@ -1801,6 +1919,15 @@
     renderProfile();
   });
 
+  $("#layoutChips").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    state.settings.layout = chip.dataset.layout;
+    save();
+    applyLayout();
+    renderProfile();
+  });
+
   $("#addForm").addEventListener("submit", submitDeal);
   $("#deleteDeal").addEventListener("click", deleteFromSheet);
 
@@ -1869,8 +1996,10 @@
       apiToken = null;
     }
     const theme = state.settings.theme;
+    const layout = state.settings.layout;
     state = initialState();
     state.settings.theme = theme;
+    state.settings.layout = layout;
     state.meta.onboarded = true;
     selectedDate = todayISO();
     activeTaskId = null;
@@ -1904,8 +2033,11 @@
 
   // ---------------------------------------------------------------- старт
   applyTheme();
+  applyLayout();
   renderTemplates();
   renderWeekdayChips();
+  renderCalcChips();
+  $("#calcRun").addEventListener("click", runCalculator);
   $("#taskDue").value = selectedDate;
   setSheetType("task");
   render();

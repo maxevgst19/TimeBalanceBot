@@ -103,6 +103,18 @@
     padding: 14px 18px calc(var(--nav-h) + 104px);
   }
 
+  html[data-layout="desktop"] .app { max-width: 960px; }
+
+  html[data-layout="desktop"] .bottom-nav {
+    left: 50%;
+    right: auto;
+    width: 100%;
+    max-width: 960px;
+    transform: translateX(-50%);
+  }
+
+  html[data-layout="desktop"] .nav-inner { max-width: 100%; }
+
   @media (min-width: 768px) {
     .app { padding-left: 24px; padding-right: 24px; }
   }
@@ -565,6 +577,84 @@
     border-radius: 999px;
     padding: 2px 8px;
   }
+
+  /* ---------- Калькулятор «а если добавить?» ---------- */
+
+  .card.calc {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .calc-title { font-size: 16px; font-weight: 700; }
+
+  .card.calc .hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .calc-times {
+    display: flex;
+    gap: 10px;
+  }
+
+  .calc-times label {
+    flex: 1;
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .calc-result {
+    display: grid;
+    gap: 10px;
+    padding-top: 4px;
+    border-top: 1px solid var(--line);
+  }
+
+  .calc-verdict {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .calc-ok {
+    margin: 0;
+    font-size: 14px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .calc-day {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    background: var(--seg-bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .calc-day-name { margin: 0; font-size: 14px; font-weight: 700; }
+
+  .calc-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .calc-note { margin: 0; font-size: 13px; color: var(--muted); }
 
   /* ---------- План Б ---------- */
 
@@ -1694,3 +1784,13 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 .city-empty { padding: 26px 20px; color: var(--muted); font-weight: 700; }
 .city-note { margin: 0 5px; }
 @media (max-width: 370px) { .nav-btn { font-size: 10px; } .nav-btn svg { width: 20px; height: 20px; } }
+
+/* Калькулятор Макара как отдельная прикреплённая записка. */
+.card.calc { position: relative; margin-top: 31px; padding: 25px 20px 20px; border-radius: 3px; background: #fff9ea; transform: rotate(-.35deg); }
+.card.calc::before { content: ""; position: absolute; width: 78px; height: 24px; top: -13px; left: 50%; transform: translateX(-50%) rotate(3deg); background: #f2bd55b5; clip-path: polygon(4% 0,100% 5%,96% 100%,0 94%); }
+.calc-title { font-family: Unbounded, Manrope, sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -.05em; }
+.calc-day { border-radius: 3px; background: #fffdf6; border-color: #e0d7c9; }
+.calc-day-name { font-family: Unbounded, Manrope, sans-serif; font-size: 12px; letter-spacing: -.04em; }
+.calc-verdict { font-weight: 800; }
+:root.is-dark .card.calc { background: #493a2c; border-color: #736454; }
+:root.is-dark .calc-day { background: #3d3329; border-color: #736454; }

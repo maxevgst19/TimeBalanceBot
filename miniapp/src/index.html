@@ -57,6 +57,22 @@
       <p class="screen-sub">Где нагрузка выше и сколько времени остаётся.</p>
     </header>
     <div class="week-list" id="weekList"></div>
+
+    <div class="card calc">
+      <h3 class="calc-title">Впишется ли новое дело?</h3>
+      <p class="hint">Выбери дни и время — покажем, что уже занимает окно и что придётся перенести.</p>
+      <div class="weekday-chips" id="calcChips" role="group" aria-label="Дни калькулятора"></div>
+      <div class="calc-times">
+        <label class="field-label" for="calcFrom">С
+          <input class="input" type="time" id="calcFrom" value="16:00">
+        </label>
+        <label class="field-label" for="calcTo">По
+          <input class="input" type="time" id="calcTo" value="17:30">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" type="button" id="calcRun">Что придётся перенести?</button>
+      <div class="calc-result" id="calcResult" hidden></div>
+    </div>
   </section>
 
   <!-- ================= АФИША ГОРОДА ================= -->
@@ -118,6 +134,15 @@
             <button class="chip" type="button" data-theme="light" aria-pressed="false">Светлая</button>
             <button class="chip" type="button" data-theme="dark" aria-pressed="false">Тёмная</button>
           </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="layoutLabel">Размер интерфейса</span>
+          <div class="chips" id="layoutChips" role="group" aria-labelledby="layoutLabel">
+            <button class="chip" type="button" data-layout="mobile" aria-pressed="true">Телефон</button>
+            <button class="chip" type="button" data-layout="desktop" aria-pressed="false">ПК</button>
+          </div>
+          <p class="hint">ПК расширяет интерфейс на весь экран монитора.</p>
         </div>
 
         <div class="switch-row">

@@ -51,6 +51,7 @@ class Settings:
     enable_bot: bool = True
     enable_notifier: bool = True
     notifier_interval_seconds: int = 60
+    wake_hour: int = 20
     jwt_secret: str = ""
 
     @property
@@ -73,5 +74,6 @@ class Settings:
             enable_bot=_env_bool("ENABLE_BOT", True),
             enable_notifier=_env_bool("ENABLE_NOTIFIER", True),
             notifier_interval_seconds=_env_int("NOTIFIER_INTERVAL_SECONDS", 60),
+            wake_hour=_env_int("WAKE_HOUR", 20),
             jwt_secret=_env("JWT_SECRET", "") or _derive_secret(bot_token),
         )
