@@ -1805,6 +1805,25 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 .calc-verdict { font-weight: 800; }
 :root.is-dark .card.calc { background: #493a2c; border-color: #736454; }
 :root.is-dark .calc-day { background: #3d3329; border-color: #736454; }
+
+/* Заметки — небольшие прикреплённые листки рядом с расписанием. */
+.note-form { position: relative; margin-top: 22px; padding: 23px 18px 18px; background: #fff5df; transform: rotate(-.3deg); }
+.note-form::before { content: ""; position: absolute; width: 13px; height: 13px; top: -7px; left: 50%; border-radius: 50%; background: #ee6944; border: 2px solid #ffd5bb; box-shadow: 0 2px 3px #34281844; }
+.note-form > label { display: block; font-weight: 800; margin-bottom: 8px; }
+.note-form textarea { width: 100%; min-height: 86px; resize: vertical; }
+.note-fields { display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; margin: 14px 0 10px; }
+.note-fields label { display: grid; gap: 6px; font-size: 12px; font-weight: 800; }
+.note-fields .input { width: 100%; min-width: 0; }
+.note-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 13px; }
+.note-item { position: relative; padding: 20px 17px 16px; }
+.note-item:nth-child(odd) { transform: rotate(.4deg); }
+.note-item:nth-child(even) { transform: rotate(-.4deg); }
+.note-item::before { content: ""; position: absolute; width: 64px; height: 19px; top: -10px; left: 50%; transform: translateX(-50%) rotate(2deg); background: #f2bd55b5; }
+.note-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 11px 0; font-weight: 700; }
+.note-stamp { color: var(--primary); font-size: 10px; font-weight: 900; letter-spacing: .1em; }
+.note-empty { padding: 18px; color: var(--muted); }
+:root.is-dark .note-form { background: #493a2c; border-color: #736454; }
+@media (max-width: 380px) { .note-fields { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -1841,6 +1860,19 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 
     <h2 class="section-title">Занятия <span id="eventCount"></span></h2>
     <div class="list" id="eventList"></div>
+
+    <h2 class="section-title">Заметки на день</h2>
+    <div class="list" id="noteList"></div>
+    <form class="card note-form" id="noteForm">
+      <label for="noteText">Что запомнить?</label>
+      <textarea class="input" id="noteText" maxlength="500" rows="3" required placeholder="Например, взять форму на тренировку"></textarea>
+      <div class="note-fields">
+        <label for="noteDay">Дата<input class="input" id="noteDay" type="date" required></label>
+        <label for="noteTarget">Напомнить<select class="input" id="noteTarget"><option value="">Утром в этот день</option></select></label>
+      </div>
+      <p class="hint">К занятию напомним за 15 минут до начала.</p>
+      <div class="note-actions"><button class="btn btn-primary" type="submit" id="noteSave">Добавить заметку</button><button class="btn btn-outline" type="button" id="noteCancel" hidden>Отмена</button></div>
+    </form>
 
     <h2 class="section-title">Итог дня</h2>
     <dl class="summary" id="summary"></dl>
@@ -2155,7 +2187,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=be19c22871" defer></script>
+<script src="app.min.js?v=3d2d1ca893" defer></script>
 <script>
 (function () {
   "use strict";
@@ -2169,7 +2201,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=be19c22871&r=" + tries;
+    s.src = "app.min.js?v=3d2d1ca893&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);

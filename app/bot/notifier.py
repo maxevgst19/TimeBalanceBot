@@ -63,6 +63,20 @@ async def _send(bot, user_id: int, text: str, buttons=None) -> bool:
         return False
 
 
+def _note_message(note: dict, blocks, now: datetime) -> str | None:
+    if note["event_id"]:
+        block = next((block for block in blocks
+                      if block.kind == "event" and block.source_id == note["event_id"]
+                      and block.starts_at.date() == now.date()
+                      and 0 <= (block.starts_at - now).total_seconds() <= 15 * 60), None)
+        if block is None:
+            return None
+        return f"<b>Заметка к «{escape(block.title)}»:</b> {escape(note['text'])}"
+    if now.hour < 9:
+        return None
+    return f"<b>Заметка на сегодня:</b> {escape(note['text'])}"
+
+
 async def check_user(
     bot, conn: db.Connection, settings: Settings, user: dict
 ) -> None:
@@ -139,6 +153,21 @@ async def check_user(
                            f"Начало: {format_time(start)}. <a href=\"{escape(reminder['url'], quote=True)}\">Подробнее</a>")
         if sent:
             await db.mark_notified(conn, user["id"], "city_event", reminder["id"])
+
+    # Заметки к дню приходят утром; к занятию — за 15 минут до начала.
+    async with conn.execute(
+        "SELECT id, day, event_id, text FROM notes WHERE user_id = ? AND day = ?",
+        (user["id"], today.isoformat()),
+    ) as cur:
+        notes = await cur.fetchall()
+    for note in notes:
+        if await db.already_notified(conn, user["id"], "note", note["id"]):
+            continue
+        message = _note_message(note, plan.blocks, now)
+        if message is None:
+            continue
+        if await _send(bot, max_user_id, message):
+            await db.mark_notified(conn, user["id"], "note", note["id"])
 
     # 3. Когда вставать: вечером — один раз на завтра, по первому делу дня.
     if now.hour >= settings.wake_hour:

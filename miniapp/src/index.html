@@ -45,6 +45,19 @@
     <h2 class="section-title">Занятия <span id="eventCount"></span></h2>
     <div class="list" id="eventList"></div>
 
+    <h2 class="section-title">Заметки на день</h2>
+    <div class="list" id="noteList"></div>
+    <form class="card note-form" id="noteForm">
+      <label for="noteText">Что запомнить?</label>
+      <textarea class="input" id="noteText" maxlength="500" rows="3" required placeholder="Например, взять форму на тренировку"></textarea>
+      <div class="note-fields">
+        <label for="noteDay">Дата<input class="input" id="noteDay" type="date" required></label>
+        <label for="noteTarget">Напомнить<select class="input" id="noteTarget"><option value="">Утром в этот день</option></select></label>
+      </div>
+      <p class="hint">К занятию напомним за 15 минут до начала.</p>
+      <div class="note-actions"><button class="btn btn-primary" type="submit" id="noteSave">Добавить заметку</button><button class="btn btn-outline" type="button" id="noteCancel" hidden>Отмена</button></div>
+    </form>
+
     <h2 class="section-title">Итог дня</h2>
     <dl class="summary" id="summary"></dl>
   </section>

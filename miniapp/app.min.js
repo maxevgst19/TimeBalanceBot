@@ -88,6 +88,7 @@
       settings: { dayEnd: "21:00", breakAfterSchool: 30, notifications: true, theme: "auto", layout: "mobile" },
       events: [],
       tasks: [],
+      notes: [],
       moved: {},
       splits: {},
       meta: { onboarded: false }
@@ -133,6 +134,7 @@
       settings: Object.assign(base.settings, data.settings || {}),
       events: Array.isArray(data.events) ? data.events.map(normalizeEvent) : [],
       tasks: Array.isArray(data.tasks) ? data.tasks.map(normalizeTask) : [],
+      notes: Array.isArray(data.notes) ? data.notes.filter((n) => n.id && n.day && n.text) : [],
       moved: data.moved && typeof data.moved === "object" ? data.moved : {},
       splits: data.splits && typeof data.splits === "object" ? data.splits : {},
       meta: Object.assign(base.meta, data.meta || {})
@@ -209,10 +211,11 @@
     const meta = state.meta || { onboarded: false };
     const from = iso(addDays(new Date(), -7));
     const to = iso(addDays(new Date(), 23));
-    const [user, events, tasks] = await Promise.all([
+    const [user, events, tasks, notes] = await Promise.all([
       api("/me"),
       api(`/events?from=${from}&to=${to}`),
-      api("/tasks")
+      api("/tasks"),
+      api("/notes")
     ]);
     const unique = new Map();
     for (const event of events) if (!unique.has(event.id)) unique.set(event.id, event);
@@ -241,6 +244,7 @@
         startedAt: task.started_at_ms || previousTasks.get(task.id)?.startedAt || null,
         spent: task.spent_min ?? previousTasks.get(task.id)?.spent ?? 0
       })),
+      notes,
       moved: {}, splits: {}, meta
     };
     serverPlan = null;
@@ -314,6 +318,7 @@
   let sheetType = "task";
   let editingId = null;
   let activeTaskId = null;
+  let editingNoteId = null;
   let toastTimer = null;
   let themeFadeTimer = null;
   let selectedWeekdays = [];
@@ -776,14 +781,49 @@
     });
     $("#fab").hidden = screen === "planb" || screen === "profile";
     renderToday();
+    renderNotes();
     if (screen === "week") renderWeek();
     if (screen === "planb") renderPlanB();
     if (screen === "profile") renderProfile();
     if (screen === "city") renderCity();
   }
 
+  function noteEventsFor(day) {
+    const dow = dowOf(day);
+    return state.events.filter((item) => item.onlyDate === day ||
+      (!item.onlyDate && item.weekdays?.includes(dow) && (!item.seriesDate || item.seriesDate <= day)));
+  }
+
+  function renderNotes() {
+    const list = state.notes.filter((note) => note.day === selectedDate);
+    $("#noteList").innerHTML = list.length ? list.map((note) => {
+      const event = state.events.find((item) => item.id === note.event_id);
+      return `<article class="card note-item">
+        <span class="note-stamp">${event ? `К ЗАНЯТИЮ · ${escapeHTML(event.title)}` : "НА ДЕНЬ · 09:00"}</span>
+        <p>${escapeHTML(note.text)}</p>
+        <div class="note-actions"><button class="btn btn-outline" type="button" data-note-edit="${escapeHTML(note.id)}">Изменить</button>
+        <button class="btn btn-outline" type="button" data-note-delete="${escapeHTML(note.id)}">Удалить</button></div>
+      </article>`;
+    }).join("") : `<div class="card note-empty">На этот день заметок пока нет.</div>`;
+    const day = $("#noteDay").value || selectedDate;
+    const selected = $("#noteTarget").value;
+    $("#noteTarget").innerHTML = `<option value="">Утром в этот день</option>` +
+      noteEventsFor(day).map((item) => `<option value="${escapeHTML(item.id)}">Перед «${escapeHTML(item.title)}»</option>`).join("");
+    $("#noteTarget").value = selected;
+  }
+
+  function resetNoteForm() {
+    editingNoteId = null;
+    $("#noteForm").reset();
+    $("#noteDay").value = selectedDate;
+    $("#noteSave").textContent = "Добавить заметку";
+    $("#noteCancel").hidden = true;
+    renderNotes();
+  }
+
   function setScreen(next) {
     screen = next;
+    if (next === "today" && !editingNoteId) $("#noteDay").value = selectedDate;
     $$("#screen-today, #screen-week, #screen-city, #screen-planb, #screen-profile").forEach((sec) => {
       const active = sec.id === `screen-${next}`;
       sec.hidden = !active;
@@ -1852,6 +1892,65 @@
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
 
+  $("#noteDay").addEventListener("change", renderNotes);
+  $("#noteCancel").addEventListener("click", resetNoteForm);
+  $("#noteList").addEventListener("click", async (event) => {
+    const edit = event.target.closest("[data-note-edit]");
+    const remove = event.target.closest("[data-note-delete]");
+    const id = edit?.dataset.noteEdit || remove?.dataset.noteDelete;
+    if (!id) return;
+    const note = state.notes.find((item) => item.id === id);
+    if (!note) return;
+    if (edit) {
+      editingNoteId = id;
+      $("#noteText").value = note.text;
+      $("#noteDay").value = note.day;
+      renderNotes();
+      $("#noteTarget").value = note.event_id || "";
+      $("#noteSave").textContent = "Сохранить заметку";
+      $("#noteCancel").hidden = false;
+      $("#noteText").focus();
+      return;
+    }
+    if (remoteMode) {
+      try { await api(`/notes/${encodeURIComponent(id)}`, "DELETE"); }
+      catch (error) { showToast(error.message); return; }
+    }
+    state.notes = state.notes.filter((item) => item.id !== id);
+    save();
+    if (editingNoteId === id) resetNoteForm();
+    renderNotes();
+    showToast("Заметка удалена");
+  });
+
+  $("#noteForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const payload = {
+      day: $("#noteDay").value,
+      event_id: $("#noteTarget").value || null,
+      text: $("#noteText").value.trim()
+    };
+    if (!payload.text) { showToast("Напиши текст заметки"); return; }
+    if (payload.day < todayISO()) { showToast("Выбери сегодня или будущий день"); return; }
+    const editing = Boolean(editingNoteId);
+    if (remoteMode) {
+      try {
+        await api(editing ? `/notes/${encodeURIComponent(editingNoteId)}` : "/notes",
+          editing ? "PUT" : "POST", payload);
+        selectedDate = payload.day;
+        await reloadRemote();
+      } catch (error) { showToast(error.message); return; }
+    } else {
+      if (editing) Object.assign(state.notes.find((note) => note.id === editingNoteId), payload);
+      else state.notes.push({ id: uid("n"), ...payload });
+      selectedDate = payload.day;
+      save();
+      render();
+    }
+    resetNoteForm();
+    showToast(editing ? "Заметка изменена" : "Заметка добавлена");
+  });
+
   $("#cityShow").addEventListener("click", () => {
     chosenCity = $("#citySelect").value.trim();
     if (!chosenCity) { showToast("Введи название города"); return; }
@@ -2043,6 +2142,7 @@
   renderCalcChips();
   $("#calcRun").addEventListener("click", runCalculator);
   $("#taskDue").value = selectedDate;
+  $("#noteDay").value = selectedDate;
   setSheetType("task");
   render();
 

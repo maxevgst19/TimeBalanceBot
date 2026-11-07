@@ -1795,3 +1795,22 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 .calc-verdict { font-weight: 800; }
 :root.is-dark .card.calc { background: #493a2c; border-color: #736454; }
 :root.is-dark .calc-day { background: #3d3329; border-color: #736454; }
+
+/* Заметки — небольшие прикреплённые листки рядом с расписанием. */
+.note-form { position: relative; margin-top: 22px; padding: 23px 18px 18px; background: #fff5df; transform: rotate(-.3deg); }
+.note-form::before { content: ""; position: absolute; width: 13px; height: 13px; top: -7px; left: 50%; border-radius: 50%; background: #ee6944; border: 2px solid #ffd5bb; box-shadow: 0 2px 3px #34281844; }
+.note-form > label { display: block; font-weight: 800; margin-bottom: 8px; }
+.note-form textarea { width: 100%; min-height: 86px; resize: vertical; }
+.note-fields { display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; margin: 14px 0 10px; }
+.note-fields label { display: grid; gap: 6px; font-size: 12px; font-weight: 800; }
+.note-fields .input { width: 100%; min-width: 0; }
+.note-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 13px; }
+.note-item { position: relative; padding: 20px 17px 16px; }
+.note-item:nth-child(odd) { transform: rotate(.4deg); }
+.note-item:nth-child(even) { transform: rotate(-.4deg); }
+.note-item::before { content: ""; position: absolute; width: 64px; height: 19px; top: -10px; left: 50%; transform: translateX(-50%) rotate(2deg); background: #f2bd55b5; }
+.note-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 11px 0; font-weight: 700; }
+.note-stamp { color: var(--primary); font-size: 10px; font-weight: 900; letter-spacing: .1em; }
+.note-empty { padding: 18px; color: var(--muted); }
+:root.is-dark .note-form { background: #493a2c; border-color: #736454; }
+@media (max-width: 380px) { .note-fields { grid-template-columns: 1fr; } }

@@ -16,6 +16,7 @@ tags:
   - name: Planning
   - name: Data
   - name: City events
+  - name: Notes
 security:
   - bearerAuth: []
 paths:
@@ -322,6 +323,48 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '204': { description: Напоминание удалено }
+  /notes:
+    get:
+      tags: [Notes]
+      summary: Заметки пользователя
+      responses:
+        '200': { description: Список заметок }
+    post:
+      tags: [Notes]
+      summary: Создать заметку к дню или занятию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NoteInput' }
+      responses:
+        '201': { description: Заметка создана }
+  /notes/{note_id}:
+    put:
+      tags: [Notes]
+      summary: Изменить заметку
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NoteInput' }
+      responses:
+        '200': { description: Заметка обновлена }
+    delete:
+      tags: [Notes]
+      summary: Удалить заметку
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Заметка удалена }
   /me/data:
     delete:
       tags: [Data]
@@ -379,6 +422,13 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    NoteInput:
+      type: object
+      required: [day, text]
+      properties:
+        day: { type: string, format: date }
+        text: { type: string, minLength: 1, maxLength: 500 }
+        event_id: { type: string, format: uuid, nullable: true }
     ApiError:
       type: object
       required: [code, message]

@@ -120,6 +120,16 @@ CREATE TABLE IF NOT EXISTS city_event_reminders (
 );
 CREATE INDEX IF NOT EXISTS idx_city_reminders_user ON city_event_reminders(user_id, starts_at);
 ALTER TABLE city_event_reminders ALTER COLUMN source_id TYPE TEXT USING source_id::text;
+
+CREATE TABLE IF NOT EXISTS notes (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day        TEXT NOT NULL,
+    event_id   TEXT REFERENCES events(id) ON DELETE SET NULL,
+    text       TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notes_user_day ON notes(user_id, day);
 """
 
 

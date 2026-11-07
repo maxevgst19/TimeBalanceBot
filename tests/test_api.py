@@ -9,6 +9,7 @@ import time
 import urllib.parse
 import uuid
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 import psycopg
@@ -59,6 +60,37 @@ def test_city_events_and_reminder(client, auth, monkeypatch):
     assert [item["id"] for item in listed.json()] == [reminder_id]
     deleted = client.delete(f"/api/v1/city-events/reminders/{reminder_id}", headers=auth)
     assert deleted.status_code == 204
+
+
+def test_notes_for_day_and_event(client, auth):
+    day = (datetime.now(ZoneInfo("Europe/Moscow")) + timedelta(days=2)).date().isoformat()
+    event = client.post("/api/v1/events", headers=auth, json={
+        "title": "Секция", "category": "extra",
+        "starts_at": f"{day}T16:00:00+03:00", "ends_at": f"{day}T17:00:00+03:00",
+    })
+    assert event.status_code == 201, event.text
+    event_id = event.json()["id"]
+
+    daily = client.post("/api/v1/notes", headers=auth, json={
+        "day": day, "text": "Взять воду",
+    })
+    assert daily.status_code == 201, daily.text
+    attached = client.post("/api/v1/notes", headers=auth, json={
+        "day": day, "event_id": event_id, "text": "Взять форму",
+    })
+    assert attached.status_code == 201, attached.text
+    note_id = attached.json()["id"]
+    listed = client.get("/api/v1/notes", headers=auth)
+    assert listed.status_code == 200
+    assert {item["text"] for item in listed.json()} == {"Взять воду", "Взять форму"}
+
+    changed = client.put(f"/api/v1/notes/{note_id}", headers=auth, json={
+        "day": day, "event_id": event_id, "text": "Взять форму и воду",
+    })
+    assert changed.status_code == 200
+    assert changed.json()["text"] == "Взять форму и воду"
+    assert client.delete(f"/api/v1/notes/{note_id}", headers=auth).status_code == 204
+    assert len(client.get("/api/v1/notes", headers=auth).json()) == 1
 
 
 def _sign(params: dict[str, str], token: str = BOT_TOKEN) -> str:
