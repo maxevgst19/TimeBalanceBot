@@ -1,4 +1,3 @@
-"""Сквозные тесты REST API: авторизация, данные, план и «План Б»."""
 from __future__ import annotations
 
 import hashlib
@@ -125,7 +124,6 @@ def client():
         enable_notifier=False,
         database_url=make_conninfo(test_url, options=f"-csearch_path={schema}"),
         jwt_secret="test-secret",
-        mini_app_url="https://example.com/app",
     )
     try:
         with TestClient(create_app(settings)) as test_client:
@@ -141,10 +139,6 @@ def auth(client):
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
-
-# --------------------------------------------------------------------------
-# Auth
-# --------------------------------------------------------------------------
 
 def test_health(client):
     assert client.get("/health").json()["status"] == "ok"
@@ -209,10 +203,6 @@ def test_invalid_day_end_is_rejected(client, auth):
     response = client.patch("/api/v1/me", headers=auth, json={"day_end": "25:99"})
     assert response.status_code == 422
 
-
-# --------------------------------------------------------------------------
-# Events
-# --------------------------------------------------------------------------
 
 def test_create_list_and_delete_event(client, auth):
     payload = {
@@ -306,10 +296,6 @@ def test_recurring_event_expands(client, auth):
     assert len(listed.json()) >= 4, "еженедельное событие должно развернуться"
 
 
-# --------------------------------------------------------------------------
-# Tasks
-# --------------------------------------------------------------------------
-
 def test_task_lifecycle(client, auth):
     created = client.post(
         "/api/v1/tasks",
@@ -361,12 +347,8 @@ def test_task_fact_minutes_persist(client, auth):
     assert listed[0]["started_at_ms"] == 1793700000000
 
 
-# --------------------------------------------------------------------------
-# План и «План Б»
-# --------------------------------------------------------------------------
-
 def _seed_overlapping_events(client, auth) -> None:
-    """Два пересекающихся события — конфликт не зависит от текущего времени."""
+
     for payload in (
         {
             "title": "Школа",
@@ -484,10 +466,6 @@ def test_apply_unknown_alternative_is_404(client, auth):
     assert response.status_code == 404
 
 
-# --------------------------------------------------------------------------
-# Данные
-# --------------------------------------------------------------------------
-
 def test_delete_my_data_wipes_everything(client, auth):
     client.post(
         "/api/v1/events",
@@ -507,13 +485,9 @@ def test_delete_my_data_wipes_everything(client, auth):
     )
 
     assert client.delete("/api/v1/me/data", headers=auth).status_code == 204
-    # Сессия привязана к удалённому профилю — доступ закрыт.
+
     assert client.get("/api/v1/me", headers=auth).status_code == 401
 
-
-# --------------------------------------------------------------------------
-# Контракт спецификации
-# --------------------------------------------------------------------------
 
 def test_openapi_paths_are_relative_to_server(client):
     spec = client.get("/openapi.json").json()

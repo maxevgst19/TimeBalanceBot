@@ -1,8 +1,3 @@
-"""Общие зависимости и формат ошибок API.
-
-Формат ошибок повторяет ``components/schemas/ApiError`` из openapi.yaml:
-``{"code": ..., "message": ..., "details": {...}}``.
-"""
 from __future__ import annotations
 
 from typing import Any
@@ -40,7 +35,7 @@ async def get_current_user(
 
 
 class ApiException(Exception):
-    """Ошибка API в формате ApiError; обрабатывается в app.main."""
+
 
     def __init__(self, status: int, code: str, message: str, details: dict | None = None):
         super().__init__(message)
@@ -61,7 +56,7 @@ def api_error(status: int, code: str, message: str, details: dict | None = None)
 
 
 def public_user(user: dict[str, Any]) -> dict[str, Any]:
-    """Публичный вид профиля: внутренний max_user_id наружу не уходит."""
+
     return {
         "id": user["id"],
         "display_name": user["display_name"],
@@ -70,7 +65,7 @@ def public_user(user: dict[str, Any]) -> dict[str, Any]:
 
 
 def require_patch(payload: Any, code: str = "validation_error") -> dict[str, Any]:
-    """Проверка ``minProperties: 1`` у патчей — пустое тело не должно ничего менять."""
+
     data = payload.model_dump(exclude_none=True)
     if not data:
         raise api_error(

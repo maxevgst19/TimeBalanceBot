@@ -1,4 +1,3 @@
-"""План дня, «Что делать сейчас» и варианты «Плана Б»."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -143,7 +142,7 @@ async def apply_plan_b(
 
     await apply_alternative(conn, user, alternative)
 
-    # Пересчитываем по тому же диапазону, в котором конфликт был показан.
+
     cached = find_conflict(user["id"], alternative["conflict_id"], payload.plan_revision)
     tz = ZoneInfo(user["settings"]["timezone"])
     today = datetime.now(tz).date()

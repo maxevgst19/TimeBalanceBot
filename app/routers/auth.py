@@ -1,4 +1,3 @@
-"""Обмен проверенных данных запуска MAX на сессию мини-приложения."""
 from __future__ import annotations
 
 import json
@@ -20,7 +19,7 @@ async def auth_max(
     conn=Depends(get_conn),
     settings: Settings = Depends(get_settings),
 ):
-    # Клиент присылает window.WebApp.initData (подписанную), а не initDataUnsafe.
+
     params = validate_init_data(
         payload.init_data, settings.bot_token, settings.init_data_max_age_seconds
     )
@@ -38,7 +37,7 @@ async def auth_max(
         raise SecurityError("missing_user")
 
     display_name = user_data.get("first_name") or user_data.get("username")
-    # Один школьник в боте и в мини-приложении — одна запись.
+
     user = await db.get_or_create_by_max_id(conn, max_user_id, display_name)
 
     token, ttl = issue_session(

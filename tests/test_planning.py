@@ -1,4 +1,3 @@
-"""Тесты алгоритма планирования: окна, раскладка, конфликты, «Что сейчас»."""
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
@@ -24,9 +23,9 @@ def test_fact_minutes_reduce_remaining_estimate():
         "estimated_min": 70, "spent_min": 25,
     }, TZ)
     assert record.estimated_min == 45
-DAY = date(2026, 11, 3)  # вторник
+DAY = date(2026, 11, 3)
 RANGE_END = date(2026, 11, 3)
-# Конец диапазона «включительно»: 00:00 следующего дня.
+
 RANGE_END_DT = datetime.combine(DAY + timedelta(days=1), time.min, tzinfo=TZ)
 NOW = datetime(2026, 11, 3, 10, 0, tzinfo=TZ)
 
@@ -86,16 +85,12 @@ def make_plan(events, tasks, now=NOW, day_from=DAY, day_to=RANGE_END):
     )
 
 
-# --------------------------------------------------------------------------
-# Свободные окна
-# --------------------------------------------------------------------------
-
 def test_free_windows_account_for_school_travel_and_break():
-    """Между школой и секцией окно сокращено на дорогу и перерыв после школы."""
+
     busy = build_busy([school(), club()], BOUNDARIES, at(0, 0), RANGE_END_DT)
     windows = free_windows(busy, BOUNDARIES, at(0, 0), RANGE_END_DT)
     spans = [(w.starts_at.strftime("%H:%M"), w.ends_at.strftime("%H:%M")) for w in windows]
-    # Дорога обратно занимает 17:30–17:55, поэтому окно начинается в 17:55.
+
     assert spans == [("07:00", "08:00"), ("14:30", "15:35"), ("17:55", "21:00")]
 
 
@@ -105,16 +100,12 @@ def test_free_windows_never_cross_day_end():
     assert all(w.ends_at <= at(21, 0) for w in windows)
 
 
-# --------------------------------------------------------------------------
-# Раскладка задач
-# --------------------------------------------------------------------------
-
 def test_task_fits_into_free_window():
     plan = make_plan([school(), club()], [task("t1", 40)])
     task_blocks = [b for b in plan.blocks if b.kind == "task"]
     assert len(task_blocks) == 1
     assert plan.unplaced == {}
-    # Задание встаёт в первое свободное окно после перерыва.
+
     assert task_blocks[0].starts_at == at(14, 30)
     assert task_blocks[0].ends_at == at(15, 10)
 
@@ -128,14 +119,14 @@ def test_splittable_task_is_split_across_windows():
 
 
 def test_shortage_is_reported_with_exact_minutes():
-    """Дефицит считается по факту: 280 минут задач при 250 свободных."""
+
     plan = make_plan([school(), club()], [task("t1", 100), task("t2", 180)])
     assert plan.unplaced == {"t2": 30}
 
     shortage = next(c for c in plan.conflicts if c.type == "time_shortage")
     assert shortage.shortage_min == 30
     assert "30" in shortage.explanation
-    # Под риском — только то, что не помещается: t1 встал целиком.
+
     assert set(shortage.affected_task_ids) == {"t2"}
 
 
@@ -146,11 +137,11 @@ def test_no_conflict_when_everything_fits():
 
 
 def test_non_splittable_task_needs_single_window():
-    """Задача на 90 минут не делимая: в окне 65 минут она не помещается."""
+
     plan = make_plan(
         [school(), club()], [task("t1", 90, splittable=False)]
     )
-    # Длинное окно 18:00–21:00 есть, поэтому неделимая задача встаёт целиком.
+
     assert plan.unplaced == {}
 
 
@@ -189,10 +180,6 @@ def test_finished_tasks_are_not_planned():
     assert [b for b in plan.blocks if b.kind == "task"] == []
 
 
-# --------------------------------------------------------------------------
-# Пересечения
-# --------------------------------------------------------------------------
-
 def test_overlap_between_events_is_reported():
     extra = EventRec(
         id="ev-extra",
@@ -208,7 +195,7 @@ def test_overlap_between_events_is_reported():
 
 
 def test_travel_overlapping_next_event_is_reported():
-    """Дорога до секции заходит на урок — это тоже конфликт."""
+
     late_school = EventRec(
         id="ev-school",
         title="Школа",
@@ -219,10 +206,6 @@ def test_travel_overlapping_next_event_is_reported():
     plan = make_plan([late_school, club()], [])
     assert any(c.type == "overlap" for c in plan.conflicts)
 
-
-# --------------------------------------------------------------------------
-# Ревизия и повторения
-# --------------------------------------------------------------------------
 
 def test_revision_changes_when_data_changes():
     a = plan_revision([{"id": 1}], [], {"day_end": "21:00"})
@@ -239,7 +222,7 @@ def test_weekly_recurrence_expands_within_range():
         category="extra",
         starts_at=at(16, 0),
         ends_at=at(17, 30),
-        weekdays=(2,),  # вторник
+        weekdays=(2,),
     )
     found = occurrences(weekly, at(0, 0), RANGE_END_DT)
     assert len(found) == 1
@@ -267,10 +250,6 @@ def test_recurrence_until_stops_series():
     assert len(found) == 1
 
 
-# --------------------------------------------------------------------------
-# «Что делать сейчас»
-# --------------------------------------------------------------------------
-
 def test_next_action_during_lesson_is_the_lesson():
     plan = make_plan([school(), club()], [task("t1", 40)])
     action = next_action(plan, [task("t1", 40)], at(10, 0))
@@ -286,7 +265,7 @@ def test_next_action_during_break_is_rest():
 
 
 def test_next_action_in_free_window_offers_a_task():
-    """Свободное окно + невыполненное задание → конкретный шаг на 15–40 минут."""
+
     tasks = [task("t1", 100)]
     plan = make_plan([school(), club()], tasks)
     action = next_action(plan, tasks, at(19, 0))

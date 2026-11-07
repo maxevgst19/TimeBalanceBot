@@ -1,10 +1,3 @@
-"""«План Б»: варианты перестройки дня и их последствия.
-
-Варианты не переносят дела молча (PROJECT_CONCEPT.md, раздел 6.2). Каждый
-вариант сначала применяется «вслепую» к копии данных, план пересчитывается, и
-пользователю показывается оставшийся дефицит. Вариант попадает в ответ только
-если дефицит действительно уменьшается.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,7 +15,7 @@ from .engine import (
 )
 from .model import Boundaries, Conflict, EventRec, PlanResult, TaskRec, stable_id
 
-MAX_VARIANTS = 2  # плюс «оставить как есть» — итого 2–3 варианта
+MAX_VARIANTS = 2
 
 
 @dataclass
@@ -45,7 +38,7 @@ def _dry_run(
     revision: str,
     conflict_id: str,
 ) -> int:
-    """Считает оставшийся дефицит конфликта после «применения» варианта."""
+
     plan = build_plan(events, tasks, boundaries, date_from, date_to, now, revision)
     for conflict in plan.conflicts:
         if conflict.id == conflict_id:
@@ -117,7 +110,7 @@ def _evaluate(
         events, tasks, boundaries, date_from, date_to, now, revision, conflict_id
     )
     if remaining >= baseline:
-        return None  # вариант не помогает — не показываем
+        return None
     return Candidate(
         alt_id=alt_id,
         title=title,
@@ -157,7 +150,7 @@ def generate_alternatives(
     candidates.sort(key=lambda item: item.remaining)
     selected = candidates[:MAX_VARIANTS]
 
-    # «Оставить как есть» показывает риск просрочки и закрывает лимит 2–3 вариантов.
+
     if len(selected) < 3:
         selected.append(
             Candidate(
@@ -192,7 +185,7 @@ def _shortage_variants(
     variants: list[Candidate] = []
     by_id = {task.id: task for task in tasks}
 
-    # 1. Разбить большое задание на части.
+
     for task_id in conflict.affected_task_ids:
         task = by_id.get(task_id)
         if task is None or task.splittable:
@@ -226,7 +219,7 @@ def _shortage_variants(
             variants.append(candidate)
         break
 
-    # 2. Перенести гибкое дело на другой день.
+
     for event in events:
         if not event.movable:
             continue
@@ -263,7 +256,7 @@ def _shortage_variants(
         if len(variants) >= MAX_VARIANTS:
             return variants
 
-    # 3. Сдвинуть срок самого несрочного задания.
+
     if len(variants) < MAX_VARIANTS:
         postponed = sorted(
             (by_id[tid] for tid in conflict.affected_task_ids if tid in by_id),
@@ -324,7 +317,7 @@ def _overlap_variants(
     ]
 
     for event in movable:
-        # Сдвиг внутри дня: отодвигаем до конца пересечения + запас.
+
         for minutes in (conflict.shortage_min + 15, conflict.shortage_min + 30, 60, 120):
             updated = _shift_event(events, event.id, minutes=minutes)
             if updated is None:
@@ -358,7 +351,7 @@ def _overlap_variants(
         if variants:
             break
 
-    # Перенос на другой день — второй вариант.
+
     if len(variants) < MAX_VARIANTS:
         for event in movable:
             for days in (1, 2, 7):
@@ -397,16 +390,12 @@ def _overlap_variants(
     return variants
 
 
-# --------------------------------------------------------------------------
-# Применение выбранного варианта
-# --------------------------------------------------------------------------
-
 async def apply_alternative(
     conn: db.Connection,
     user: dict[str, Any],
     alternative: dict[str, Any],
 ) -> None:
-    """Выполняет сохранённую мутацию. План пересчитается вызывающей стороной."""
+
     payload = alternative["payload"]
     kind = payload.get("kind")
 

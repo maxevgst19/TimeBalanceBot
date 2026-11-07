@@ -1,9 +1,3 @@
-"""Чат-бот MAX — точка входа в мини-приложение.
-
-Роль бота ограничена (PROJECT_CONCEPT.md, раздел 8): дать короткое описание
-и кнопку перехода в мини-приложение, а также доставлять редкие важные
-уведомления от сервера. Планирование в чате не выполняется.
-"""
 from __future__ import annotations
 
 import logging
@@ -41,7 +35,7 @@ FALLBACK = (
 
 
 def register_handlers(dp: Dispatcher, settings: Settings, pool=None) -> None:
-    """Регистрирует обработчики. Порядок важен: Dispatcher берёт первый подходящий."""
+
 
     @dp.message(commands=["start"])
     async def start(msg):
@@ -69,8 +63,7 @@ def register_handlers(dp: Dispatcher, settings: Settings, pool=None) -> None:
         await cb.answer()
         await cb.reply(ABOUT, format="html")
 
-    # Кнопки «протухших» заданий: payload вида stale_move:<id>.
-    # Регистрируется последним: Dispatcher отдаёт callback первому подходящему.
+
     @dp.callback()
     async def stale_action(cb):
         if not cb.payload or not cb.payload.startswith(
@@ -105,7 +98,7 @@ def register_handlers(dp: Dispatcher, settings: Settings, pool=None) -> None:
                     await cb.answer("Убрано из списка")
                 else:
                     await cb.answer("Хорошо, больше не спрошу")
-        except Exception:  # noqa: BLE001 - ответ кнопки не должен ронять polling
+        except Exception:
             logger.exception("Ошибка действия по протухшему заданию %s", task_id)
             await cb.answer("Не получилось, попробуй ещё раз")
 

@@ -1,8 +1,3 @@
-"""Сборка приложения: REST API мини-приложения и чат-бот MAX в одном процессе.
-
-Контракт API — ``openapi.yaml``. Сгенерированная спецификация доступна по
-``/openapi.json`` и приводится к тому же виду: пути относительны к ``/api/v1``.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -70,7 +65,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         )
                     )
                 logger.info("Бот MAX запущен (long polling)")
-            except Exception:  # noqa: BLE001 - API должен работать и без бота
+            except Exception:
                 logger.exception("Бот не запущен, API продолжает работать")
         else:
             logger.warning(
@@ -85,17 +80,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         for task in app.state.background:
             try:
                 await task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            except (asyncio.CancelledError, Exception):
                 pass
         await app.state.db.close()
 
     app = FastAPI(
         title="TimeBalance API",
         version="0.1.0",
-        description=(
-            "Бэкенд мини-приложения TimeBalance в MAX. "
-            "Контракт: openapi.yaml."
-        ),
+        description="API мини-приложения TimeBalance в MAX.",
         lifespan=lifespan,
     )
 
@@ -112,7 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def _validation_exception(request, exc: RequestValidationError):
         details = {"errors": exc.errors()}
-        # Pydantic кладёт в 'ctx' объекты, не сериализующиеся в JSON напрямую.
+
         for error in details["errors"]:
             error.pop("ctx", None)
             error.pop("input", None)
@@ -150,7 +142,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 def _align_openapi_with_contract(app: FastAPI) -> None:
-    """Пути спецификации — относительно сервера /api/v1, как в openapi.yaml."""
+
     original_openapi = app.openapi
 
     def openapi_spec():
@@ -170,7 +162,7 @@ def _align_openapi_with_contract(app: FastAPI) -> None:
 
 
 def route_paths(app: FastAPI) -> list[str]:
-    """Полные пути роутов — используется в тестах."""
+
     return sorted(
         route.path
         for route in app.routes
@@ -179,7 +171,7 @@ def route_paths(app: FastAPI) -> list[str]:
 
 
 def run() -> None:
-    """Точка входа: ``python code.py``."""
+
     import uvicorn
 
     logging.basicConfig(
@@ -192,7 +184,7 @@ def run() -> None:
         host=settings.host,
         port=settings.port,
         log_level="info",
-        # psycopg на Windows требует SelectorEventLoop, а не ProactorEventLoop
+
         loop=(lambda: asyncio.SelectorEventLoop()) if sys.platform == "win32" else "auto",
     )
 

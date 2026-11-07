@@ -15,8 +15,7 @@
     --danger-soft: #FCEDE9;
     --danger-line: #F0D3CC;
 
-    /* производные оттенки — отдельными токенами, чтобы тёмная тема
-       переопределяла их в одном месте, а не по всем правилам */
+
     --primary-hover: #2A5A4D;
     --primary-soft-hover: #D8ECE3;
     --danger-hover: #973E33;
@@ -35,7 +34,7 @@
     --ring-soft: rgba(50, 107, 92, 0.15);
     --shadow-primary: rgba(50, 107, 92, 0.26);
 
-    /* текст на цветных поверхностях и тост */
+
     --on-primary: #FFFFFF;
     --on-danger: #FFFFFF;
     --toast-bg: #1E2725;
@@ -49,7 +48,7 @@
     --nav-h: 72px;
     --shadow: 0 1px 2px rgba(30, 39, 37, 0.05);
 
-    /* движение: мягкий выход, без рывка на старте и в конце */
+
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
@@ -119,7 +118,7 @@
     .app { padding-left: 24px; padding-right: 24px; }
   }
 
-  /* ---------- Заголовок экрана ---------- */
+
 
   .screen-head {
     padding: 20px 0 6px;
@@ -148,7 +147,7 @@
     color: var(--muted);
   }
 
-  /* ---------- Карточки ---------- */
+
 
   .card {
     background: var(--surface);
@@ -175,7 +174,7 @@
     color: var(--muted);
   }
 
-  /* ---------- Сейчас ---------- */
+
 
   .now-card { padding: 20px; }
 
@@ -236,7 +235,7 @@
     font-variant-numeric: normal;
   }
 
-  /* ---------- Кнопки ---------- */
+
 
   .btn {
     display: inline-flex;
@@ -265,7 +264,7 @@
   .btn-outline:hover { background: var(--surface-hover); }
   .btn-block { width: 100%; }
 
-  /* ---------- Конфликт ---------- */
+
 
   .conflict-card {
     padding: 18px;
@@ -296,7 +295,7 @@
 
   .conflict-card .btn { margin-top: 16px; }
 
-  /* ---------- Шкала дня ---------- */
+
 
   .timeline-card { padding: 18px 14px 16px 6px; }
 
@@ -435,7 +434,7 @@
 
   .blk.is-active { box-shadow: 0 0 0 3px var(--ring); }
 
-  /* ---------- Итог дня ---------- */
+
 
   .summary {
     display: grid;
@@ -486,7 +485,7 @@
     .sum-card dd { font-size: 16px; }
   }
 
-  /* ---------- Неделя ---------- */
+
 
   .week-list { display: grid; gap: 10px; margin-top: 18px; }
 
@@ -578,7 +577,7 @@
     padding: 2px 8px;
   }
 
-  /* ---------- Калькулятор «а если добавить?» ---------- */
+
 
   .card.calc {
     display: grid;
@@ -656,7 +655,7 @@
 
   .calc-note { margin: 0; font-size: 13px; color: var(--muted); }
 
-  /* ---------- План Б ---------- */
+
 
   .back-btn {
     display: inline-flex;
@@ -754,7 +753,7 @@
     color: var(--muted);
   }
 
-  /* ---------- Профиль ---------- */
+
 
   .settings { padding: 18px; display: grid; gap: 18px; }
 
@@ -837,7 +836,7 @@
     color: var(--muted);
   }
 
-  /* ---------- Подтверждение сброса ---------- */
+
 
   .reset-confirm {
     display: grid;
@@ -863,7 +862,7 @@
 
   .reset-confirm-actions .btn { padding: 0 12px; }
 
-  /* ---------- Нижняя навигация ---------- */
+
 
   .bottom-nav {
     position: fixed;
@@ -920,7 +919,7 @@
     background: var(--primary);
   }
 
-  /* ---------- Кнопка «Добавить» ---------- */
+
 
   .nav-add {
     flex: none;
@@ -941,7 +940,7 @@
 
   .nav-add:hover { background: var(--primary-hover); }
 
-  /* ---------- Нижний лист ---------- */
+
 
   .sheet-backdrop {
     position: fixed;
@@ -1067,7 +1066,7 @@
     color: var(--muted);
   }
 
-  /* ---------- Тост ---------- */
+
 
   .toast {
     position: fixed;
@@ -1090,7 +1089,7 @@
 
   .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
 
-  /* ---------- Пустое состояние ---------- */
+
 
   .empty {
     padding: 28px 16px;
@@ -1101,7 +1100,7 @@
 
   .empty p { margin: 0 0 14px; }
 
-/* ---------- Ошибка загрузки ---------- */
+
 
 .load-error {
   position: fixed;
@@ -1146,11 +1145,7 @@
   font-size: 14px;
 }
 
-/* ============================================================
-   ТЁМНАЯ ТЕМА
-   Значения переопределяются одним блоком, компоненты остаются
-   теми же — они используют только токены.
-   ============================================================ */
+
 
 :root[data-theme="dark"] {
   --canvas: #12181A;
@@ -1197,7 +1192,7 @@
   color-scheme: dark;
 }
 
-/* Тема «как в системе»: те же значения, когда система тёмная */
+
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
     --canvas: #12181A;
@@ -1245,9 +1240,7 @@
   }
 }
 
-/* ============================================================
-   СПИСКИ ДЕЛ И ЗАНЯТИЙ
-   ============================================================ */
+
 
 .list { display: grid; gap: 8px; }
 
@@ -1340,9 +1333,7 @@
 .cat-dot--extra { background: var(--extra); }
 .cat-dot--personal { background: var(--travel); }
 
-/* ============================================================
-   ШАБЛОНЫ И ДНИ НЕДЕЛИ
-   ============================================================ */
+
 
 .templates { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -1373,18 +1364,14 @@
   color: var(--on-primary);
 }
 
-/* ============================================================
-   КАРТОЧКА «СЕЙЧАС»: ТАЙМЕР
-   ============================================================ */
+
 
 .now-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .now-actions .btn { padding: 0 16px; }
 
 .now-foot { flex-wrap: wrap; }
 
-/* ============================================================
-   ОНБОРДИНГ
-   ============================================================ */
+
 
 .onboarding {
   position: fixed;
@@ -1473,9 +1460,7 @@
   cursor: pointer;
 }
 
-/* ============================================================
-   ТОСТ С ДЕЙСТВИЕМ
-   ============================================================ */
+
 
 .toast {
   display: flex;
@@ -1495,9 +1480,7 @@
   cursor: pointer;
 }
 
-/* ============================================================
-   АНИМАЦИИ
-   ============================================================ */
+
 
 @keyframes screen-in {
   from { opacity: 0; transform: translateY(14px); }
@@ -1534,9 +1517,7 @@
   50% { box-shadow: 0 0 0 5px transparent; }
 }
 
-/* Плавная смена темы.
-   transition включается только на время переключения: постоянный
-   transition на всех элементах замедляет прокрутку и гасит анимации. */
+
 html.is-theme-fading,
 html.is-theme-fading *,
 html.is-theme-fading *::before,
@@ -1576,7 +1557,7 @@ html.is-theme-fading *::after {
 
 .week-row:active { transform: scale(0.99); }
 
-/* Уважение к настройке «уменьшить движение» */
+
 @media (prefers-reduced-motion: reduce) {
   .screen-enter,
   .blk,
@@ -1598,7 +1579,7 @@ html.is-theme-fading *::after {
   }
 }
 
-/* Pinboard theme, adapted from the visual language of IGOR_legenda. */
+
 :root {
   --canvas: #f5f0e7;
   --surface: #fffdf8;
@@ -1696,7 +1677,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 @media (max-width: 380px) { .app { padding-left: 14px; padding-right: 14px; } .now-foot { gap: 8px; } .now-foot .btn { padding-inline: 12px; } h1 { font-size: 29px; } }
 @media (prefers-reduced-motion: reduce) { .btn, .nav-add { transition: none; } }
 
-/* Тёмная версия того же бумажного пинборда. */
+
 :root.is-dark {
   --canvas: #24221f;
   --surface: #343029;
@@ -1743,7 +1724,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 :root.is-dark .week-row:hover { background: #453a2e; }
 :root.is-dark .blk--travel { background: repeating-linear-gradient(135deg,#514a40 0 8px,#3f3931 8px 16px); color: #f5eee1; }
 
-/* Прикреплённые дела и подсказки продолжают язык светлого пинборда. */
+
 .row-item { position: relative; border-radius: 3px; padding: 16px 12px 14px 16px; animation: none; }
 .row-item:nth-child(odd) { transform: rotate(-.35deg); }
 .row-item:nth-child(even) { transform: rotate(.35deg); }
@@ -1764,7 +1745,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 :root.is-dark .chip--tpl { background: #58452c; border-color: #96703b; color: #f5e2bb; }
 :root.is-dark .onboarding-card { background: #3f342a; box-shadow: 9px 12px 0 #171511; }
 
-/* Афиша — листки на той же доске, что расписание. */
+
 .nav-inner { gap: 3px; }
 .nav-btn { min-width: 0; font-size: 11px; }
 .city-picker { padding: 20px; margin: 8px 0 25px; transform: rotate(-.4deg); }
@@ -1786,7 +1767,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 .city-note { margin: 0 5px; }
 @media (max-width: 370px) { .nav-btn { font-size: 10px; } .nav-btn svg { width: 20px; height: 20px; } }
 
-/* Калькулятор Макара как отдельная прикреплённая записка. */
+
 .card.calc { position: relative; margin-top: 31px; padding: 25px 20px 20px; border-radius: 3px; background: #fff9ea; transform: rotate(-.35deg); }
 .card.calc::before { content: ""; position: absolute; width: 78px; height: 24px; top: -13px; left: 50%; transform: translateX(-50%) rotate(3deg); background: #f2bd55b5; clip-path: polygon(4% 0,100% 5%,96% 100%,0 94%); }
 .calc-title { font-family: Unbounded, Manrope, sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -.05em; }
@@ -1796,7 +1777,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 :root.is-dark .card.calc { background: #493a2c; border-color: #736454; }
 :root.is-dark .calc-day { background: #3d3329; border-color: #736454; }
 
-/* Заметки — небольшие прикреплённые листки рядом с расписанием. */
+
 .note-form { position: relative; margin-top: 22px; padding: 23px 18px 18px; background: #fff5df; transform: rotate(-.3deg); }
 .note-form::before { content: ""; position: absolute; width: 13px; height: 13px; top: -7px; left: 50%; border-radius: 50%; background: #ee6944; border: 2px solid #ffd5bb; box-shadow: 0 2px 3px #34281844; }
 .note-form > label { display: block; font-weight: 800; margin-bottom: 8px; }

@@ -1,4 +1,3 @@
-"""Профиль, личные границы и работа с данными пользователя."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -36,5 +35,5 @@ async def update_me(
 
 @router.delete("/me/data", status_code=204)
 async def delete_my_data(conn=Depends(get_conn), user=Depends(get_current_user)):
-    """Удаляет профиль, события, задачи и настройки пользователя."""
+
     await db.delete_user_data(conn, user["id"])

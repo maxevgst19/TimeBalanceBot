@@ -1,4 +1,3 @@
-"""Хранилище PostgreSQL. Соединения выдаются пулом на время запроса."""
 from __future__ import annotations
 
 import json
@@ -12,7 +11,7 @@ from psycopg_pool import AsyncConnectionPool
 
 
 class Query:
-    """Небольшой адаптер для существующих вызовов execute и async with execute."""
+
 
     def __init__(self, conn: AsyncConnection, sql: str, params: tuple | list = ()):
         self.conn = conn
@@ -88,7 +87,6 @@ CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS spent_min INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS started_at_ms BIGINT NOT NULL DEFAULT 0;
 
--- Варианты «Плана Б»: живут до применения или пока не изменятся исходные данные.
 CREATE TABLE IF NOT EXISTS alternatives (
     id            TEXT PRIMARY KEY,
     user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -99,7 +97,6 @@ CREATE TABLE IF NOT EXISTS alternatives (
 );
 CREATE INDEX IF NOT EXISTS idx_alternatives_user ON alternatives(user_id);
 
--- Дедупликация уведомлений: одна причина — одно сообщение в сутки.
 CREATE TABLE IF NOT EXISTS notifications_sent (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     kind    TEXT NOT NULL,
@@ -157,10 +154,6 @@ async def open_db(url: str) -> AsyncConnectionPool:
         raise
     return pool
 
-
-# --------------------------------------------------------------------------
-# Пользователи
-# --------------------------------------------------------------------------
 
 DEFAULT_SETTINGS = {
     "timezone": "Europe/Moscow",
@@ -231,7 +224,7 @@ async def create_user(
 async def get_or_create_by_max_id(
     conn: Connection, max_user_id: int, display_name: str | None
 ) -> dict[str, Any]:
-    """Один и тот же школьник в боте и в мини-приложении — одна запись."""
+
     user = await get_user_by_max_id(conn, max_user_id)
     if user is not None:
         if display_name and not user["display_name"]:
@@ -271,14 +264,10 @@ async def update_settings(
 
 
 async def delete_user_data(conn: Connection, user_id: str) -> None:
-    # Все связанные записи удаляются каскадом вместе с пользователем.
+
     await conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     await conn.commit()
 
-
-# --------------------------------------------------------------------------
-# События
-# --------------------------------------------------------------------------
 
 def row_to_event(row: dict[str, Any]) -> dict[str, Any]:
     return {
@@ -392,10 +381,6 @@ async def delete_event(conn: Connection, user_id: str, event_id: str) -> bool:
     return cur.rowcount > 0
 
 
-# --------------------------------------------------------------------------
-# Задачи
-# --------------------------------------------------------------------------
-
 TASK_STATUSES = ("todo", "in_progress", "done")
 TASK_PRIORITIES = ("normal", "high")
 
@@ -490,10 +475,6 @@ async def delete_task(conn: Connection, user_id: str, task_id: str) -> bool:
     await conn.commit()
     return cur.rowcount > 0
 
-
-# --------------------------------------------------------------------------
-# Варианты «Плана Б» и уведомления
-# --------------------------------------------------------------------------
 
 async def save_alternative(
     conn: Connection,

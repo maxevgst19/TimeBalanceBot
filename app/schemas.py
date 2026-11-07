@@ -1,4 +1,3 @@
-"""Модели запросов и ответов, повторяющие контракт openapi.yaml."""
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -7,19 +6,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
-# --------------------------------------------------------------------------
-# Общие
-# --------------------------------------------------------------------------
-
 class ApiError(BaseModel):
     code: str
     message: str
     details: dict[str, Any] | None = None
 
-
-# --------------------------------------------------------------------------
-# Auth / Profile
-# --------------------------------------------------------------------------
 
 class AuthMaxRequest(BaseModel):
     init_data: str = Field(min_length=1)
@@ -51,10 +42,6 @@ class SessionResponse(BaseModel):
     expires_in: int = Field(ge=1)
     user: User
 
-
-# --------------------------------------------------------------------------
-# Events
-# --------------------------------------------------------------------------
 
 class Recurrence(BaseModel):
     weekdays: list[int] = Field(min_length=1, max_length=7)
@@ -97,10 +84,6 @@ class Event(EventInput):
     series_starts_at: datetime | None = None
 
 
-# --------------------------------------------------------------------------
-# Tasks
-# --------------------------------------------------------------------------
-
 class TaskInput(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     due_at: datetime
@@ -127,18 +110,14 @@ class Task(TaskInput):
     started_at_ms: int = Field(ge=0)
 
 
-# --------------------------------------------------------------------------
-# Planning
-# --------------------------------------------------------------------------
-
 class TimeBlock(BaseModel):
     kind: Literal["event", "task", "travel", "break", "free"]
     source_id: str | None = None
     starts_at: datetime
     ends_at: datetime
     title: str
-    # Дополнительно к openapi.yaml: нужно мини-приложению для цветовой категории
-    # и отметки о переносимости (DESIGN_STANDARD.md, разделы 4 и 7).
+
+
     category: str | None = None
     movable: bool | None = None
 

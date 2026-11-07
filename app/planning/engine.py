@@ -1,14 +1,3 @@
-"""Алгоритм планирования TimeBalance.
-
-Реализует базовый алгоритм MVP из PROJECT_CONCEPT.md, раздел 9, — работа
-интервалами без ИИ:
-
-1. строим занятые интервалы на диапазон дат (события, дорога, перерывы);
-2. находим свободные окна в пределах учебного дня;
-3. раскладываем задачи по окнам по срочности;
-4. считаем неразмещённые минуты и описываем конкретный конфликт;
-5. из конфликта собираются варианты «Плана Б» (см. alternatives.py).
-"""
 from __future__ import annotations
 
 import hashlib
@@ -21,12 +10,8 @@ from .model import Block, Boundaries, Conflict, EventRec, PlanResult, TaskRec, s
 MAX_RANGE_DAYS = 31
 
 
-# --------------------------------------------------------------------------
-# Вспомогательные функции
-# --------------------------------------------------------------------------
-
 def plural_minutes(value: int) -> str:
-    """Склонение: «1 минута», «2 минуты», «5 минут»."""
+
     value = abs(value)
     last_two = value % 100
     last = value % 10
@@ -42,7 +27,7 @@ def plural_minutes(value: int) -> str:
 
 
 def human_duration(minutes: int) -> str:
-    """Короткая запись длительности: «45 мин», «1 ч 20 мин», «2 ч»."""
+
     if minutes < 60:
         return f"{minutes} мин"
     hours, rest = divmod(minutes, 60)
@@ -60,7 +45,7 @@ def format_day(value: datetime | date) -> str:
 
 
 def as_aware(value: datetime, tz: ZoneInfo) -> datetime:
-    """Наивное время трактуем как локальное время пользователя."""
+
     if value.tzinfo is None:
         return value.replace(tzinfo=tz)
     return value.astimezone(tz)
@@ -70,10 +55,6 @@ def parse_iso(value: str, tz: ZoneInfo) -> datetime:
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return as_aware(parsed, tz)
 
-
-# --------------------------------------------------------------------------
-# Конвертация записей хранилища в типы алгоритма
-# --------------------------------------------------------------------------
 
 def event_to_rec(raw: dict, tz: ZoneInfo) -> EventRec:
     recurrence = raw.get("recurrence") or {}
@@ -112,12 +93,8 @@ def boundaries_from_settings(settings: dict, day_start: str) -> Boundaries:
     )
 
 
-# --------------------------------------------------------------------------
-# Шаг 1: занятые интервалы
-# --------------------------------------------------------------------------
-
 def occurrences(event: EventRec, range_start: datetime, range_end: datetime) -> list[tuple[datetime, datetime]]:
-    """Экземпляры события, попадающие в диапазон (одно или повторение)."""
+
     if not event.weekdays:
         if event.starts_at < range_end and event.ends_at > range_start:
             return [(event.starts_at, event.ends_at)]
@@ -146,7 +123,7 @@ def build_busy(
     range_start: datetime,
     range_end: datetime,
 ) -> list[Block]:
-    """События, дорога до/после и обязательный перерыв после школы."""
+
     tz = ZoneInfo(boundaries.timezone)
     blocks: list[Block] = []
     school_ends: dict[date, datetime] = {}
@@ -188,7 +165,7 @@ def build_busy(
                         movable=event.movable,
                     )
                 )
-            # Перерыв после школы считаем от последнего урока в этот день.
+
             if event.category == "school":
                 current = school_ends.get(start.date())
                 if current is None or end > current:
@@ -213,17 +190,13 @@ def build_busy(
     return blocks
 
 
-# --------------------------------------------------------------------------
-# Шаг 2: свободные окна
-# --------------------------------------------------------------------------
-
 def free_windows(
     busy: list[Block],
     boundaries: Boundaries,
     range_start: datetime,
     range_end: datetime,
 ) -> list[Block]:
-    """Свободное время внутри учебного дня: [day_start, day_end] минус занятость."""
+
     tz = ZoneInfo(boundaries.timezone)
     ordered = sorted(busy, key=lambda block: block.starts_at)
     result: list[Block] = []
@@ -258,21 +231,13 @@ def free_windows(
     return result
 
 
-# --------------------------------------------------------------------------
-# Шаг 3: раскладка задач
-# --------------------------------------------------------------------------
-
 def place_tasks(
     tasks: list[TaskRec],
     windows: list[Block],
     now: datetime,
     range_end: datetime,
 ) -> tuple[list[Block], dict[str, int], list[TaskRec], int]:
-    """Раскладывает задачи по окнам.
 
-    Возвращает (блоки задач, неразмещённые минуты по id, учитанные задачи,
-    суммарная ёмкость свободных окон).
-    """
     considered = [
         task for task in tasks if task.status != "done" and task.due_at <= range_end
     ]
@@ -284,7 +249,7 @@ def place_tasks(
         )
     )
 
-    # Окна, доступные для работы: прошлое сегодня исключается.
+
     usable: list[list[datetime]] = []
     capacity = 0
     for window in windows:
@@ -303,7 +268,7 @@ def place_tasks(
                 break
             if window[1] <= window[0]:
                 continue
-            # Работа не может заканчиваться позже срока сдачи.
+
             limit = min(window[1], task.due_at)
             if limit <= window[0]:
                 continue
@@ -314,7 +279,7 @@ def place_tasks(
             if task.splittable:
                 take = min(span, remaining)
             else:
-                # Неделимая задача требует одно окно нужной длины.
+
                 if span < task.estimated_min:
                     continue
                 take = remaining
@@ -336,12 +301,8 @@ def place_tasks(
     return placed, unplaced, considered, capacity
 
 
-# --------------------------------------------------------------------------
-# Шаг 4: конфликты
-# --------------------------------------------------------------------------
-
 def detect_overlaps(busy: list[Block]) -> list[Conflict]:
-    """Пересечения событий и дороги: причина конфликта должна быть видна."""
+
     items = sorted(
         (block for block in busy if block.source_id is not None),
         key=lambda block: block.starts_at,
@@ -403,7 +364,7 @@ def build_conflicts(
     affected = [task_id for task_id in unplaced if task_id in by_id]
 
     if required_min > free_capacity_min:
-        # Общий дефицит: ровно та карточка «Не хватает N минут» из концепции.
+
         horizon = min(by_id[task_id].due_at for task_id in affected) if affected else None
         horizon_text = f" До {format_day(horizon)}." if horizon else ""
         conflicts.append(
@@ -421,7 +382,7 @@ def build_conflicts(
         )
         return conflicts
 
-    # Ёмкость есть, но задачи фрагментированы: объясняем каждую по отдельности.
+
     for task_id, minutes in sorted(unplaced.items(), key=lambda item: by_id[item[0]].due_at):
         task = by_id[task_id]
         reason = (
@@ -442,12 +403,8 @@ def build_conflicts(
     return conflicts
 
 
-# --------------------------------------------------------------------------
-# Сборка плана
-# --------------------------------------------------------------------------
-
 def plan_revision(events: list[dict], tasks: list[dict], settings: dict) -> str:
-    """Хеш исходных данных: меняется при каждой правке — контракт требует."""
+
     payload = json.dumps(
         {"events": events, "tasks": tasks, "settings": settings},
         sort_keys=True,
@@ -479,7 +436,7 @@ def build_plan(
         if window.ends_at > window.starts_at
     ]
 
-    # Итоговые «свободные» минуты — окна, в которые ничего не разместили.
+
     consumed: list[tuple[datetime, datetime]] = sorted(
         ((block.starts_at, block.ends_at) for block in placed),
         key=lambda pair: pair[0],
@@ -529,12 +486,8 @@ def build_plan(
     )
 
 
-# --------------------------------------------------------------------------
-# «Что делать сейчас»
-# --------------------------------------------------------------------------
-
 def next_action(plan: PlanResult, tasks: list[TaskRec], now: datetime) -> dict:
-    """Один выполнимый следующий шаг на ближайшие 15–40 минут (раздел 6.4)."""
+
     open_tasks = sorted(
         (task for task in tasks if task.status != "done"),
         key=lambda task: (task.due_at, 0 if task.priority == "high" else 1),

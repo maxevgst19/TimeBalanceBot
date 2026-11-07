@@ -1,9 +1,3 @@
-"""Слой между хранилищем и алгоритмом планирования.
-
-Один вход для всех потребителей плана: роутеры API, бот и планировщик
-уведомлений считают план одинаково — мини-приложение не пересчитывает
-конфликты самостоятельно (DESIGN_STANDARD.md, раздел 11).
-"""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -92,7 +86,7 @@ def plan_to_api(plan: PlanResult) -> dict[str, Any]:
 def expand_occurrences(
     event: dict[str, Any], date_from: date, date_to: date, tz: ZoneInfo
 ) -> list[dict[str, Any]]:
-    """Экземпляры повторения в диапазоне: контракт GET /events."""
+
     rec = engine.event_to_rec(event, tz)
     range_start = datetime.combine(date_from, datetime.min.time(), tzinfo=tz)
     range_end = datetime.combine(date_to + timedelta(days=1), datetime.min.time(), tzinfo=tz)
@@ -116,18 +110,9 @@ def parse_range(date_from: date, date_to: date) -> None:
         raise ValueError(f"диапазон длиннее {engine.MAX_RANGE_DAYS} дней")
 
 
-# --------------------------------------------------------------------------
-# Кэш последнего рассчитанного плана
-# --------------------------------------------------------------------------
-
 @dataclass
 class CachedPlan:
-    """План, который пользователь только что видел.
 
-    Нужен, чтобы «План Б» считался по тому же диапазону дат, что и карточка
-    конфликта на экране: тело запроса ``POST /plan/alternatives`` содержит
-    только ``conflict_id`` и ``plan_revision``.
-    """
 
     date_from: date
     date_to: date
@@ -149,7 +134,7 @@ def remember_plan(
 ) -> None:
     per_user = _plan_cache.setdefault(user_id, {})
     per_user[(date_from, date_to)] = CachedPlan(date_from, date_to, plan, events, tasks)
-    # Кэш живёт недолго: старые диапазоны не должны копиться вечно.
+
     while len(per_user) > 8:
         per_user.pop(next(iter(per_user)))
 
@@ -157,7 +142,7 @@ def remember_plan(
 def find_conflict(
     user_id: str, conflict_id: str, revision: str
 ) -> CachedPlan | None:
-    """Диапазон, в котором был показан конфликт, и подтверждение его ревизии."""
+
     for cached in _plan_cache.get(user_id, {}).values():
         if cached.plan.revision != revision:
             continue

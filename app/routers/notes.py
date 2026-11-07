@@ -1,4 +1,3 @@
-"""Заметки к дню или экземпляру занятия."""
 from __future__ import annotations
 
 from datetime import date, datetime

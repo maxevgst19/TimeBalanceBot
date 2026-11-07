@@ -1,12 +1,3 @@
-"""Проверка данных запуска MAX и выпуск сессий мини-приложения.
-
-Алгоритм проверки подписанного ``window.WebAppData`` описан в документации MAX:
-https://dev.max.ru/docs/webapps/validation/
-
-Ключевые шаги: отбросить ``hash``, URL-декодировать значения, отсортировать
-параметры по имени, склеить через ``\\n``, подписать HMAC-SHA256 с ключом
-``HMAC_SHA256("WebAppData", BOT_TOKEN)`` и сравнить с ``hash``.
-"""
 from __future__ import annotations
 
 import base64
@@ -18,7 +9,7 @@ from urllib.parse import parse_qsl
 
 
 class SecurityError(Exception):
-    """Базовая ошибка аутентификации. Код используется как ``code`` в ApiError."""
+
 
     def __init__(self, code: str, message: str | None = None):
         super().__init__(message or code)
@@ -45,11 +36,7 @@ def _b64url_decode(value: str) -> bytes:
 
 
 def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> dict[str, str]:
-    """Проверяет подпись данных запуска MAX и возвращает их параметры.
 
-    Параметры с повторяющимися именами отклоняются: они меняют строку подписи,
-    поэтому подделка через дубликат возможна без нарушения подписи.
-    """
     if not init_data or not bot_token:
         raise SecurityError("init_data_invalid")
 
@@ -70,7 +57,7 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> 
     params = dict(pairs)
     original_hash = params.pop("hash")
 
-    # Строка подписи: отсортированные пары key=value через \n, без hash.
+
     launch_params = "\n".join(f"{name}={value}" for name, value in sorted(params.items()))
 
     secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
@@ -93,7 +80,7 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> 
 
 
 def issue_session(user_id: str, secret: str, ttl_seconds: int) -> tuple[str, int]:
-    """Выпускает сессионный токен формата JWT (HS256)."""
+
     now = int(time.time())
     header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
     payload = _b64url_encode(
@@ -107,7 +94,7 @@ def issue_session(user_id: str, secret: str, ttl_seconds: int) -> tuple[str, int
 
 
 def read_session(token: str, secret: str) -> str:
-    """Проверяет сессионный токен и возвращает идентификатор пользователя."""
+
     if not token:
         raise SecurityError("session_invalid")
 

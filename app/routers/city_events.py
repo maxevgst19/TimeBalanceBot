@@ -1,4 +1,3 @@
-"""Городская афиша СПОНТАННО и напоминания о мероприятиях."""
 from __future__ import annotations
 
 import time

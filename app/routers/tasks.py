@@ -1,4 +1,3 @@
-"""Задания: домашние работы и другие дела со сроком."""
 from __future__ import annotations
 
 from datetime import date

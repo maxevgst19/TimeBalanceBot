@@ -1,7 +1,6 @@
 ﻿(() => {
   "use strict";
 
-  // ---------------------------------------------------------------- утилиты
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const pad = (n) => String(n).padStart(2, "0");
@@ -53,7 +52,6 @@
   };
   const categoryLabel = { school: "Школа", extra: "Кружки", personal: "Личное" };
 
-  // Дни недели в порядке пн..вс (в state храним 1..7, где 7 — воскресенье)
   const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 7];
   const WEEK_SHORT_BY_NUM = { 1: "пн", 2: "вт", 3: "ср", 4: "чт", 5: "пт", 6: "сб", 7: "вс" };
 
@@ -65,7 +63,6 @@
     return sorted.map((d) => WEEK_SHORT_BY_NUM[d] || "?").join(", ");
   };
 
-  // ---------------------------------------------------------------- шаблоны
   const TASK_TEMPLATES = [
     { label: "Домашка", title: "Домашнее задание", estimated: 60 },
     { label: "Чтение", title: "Чтение", estimated: 30 },
@@ -79,7 +76,6 @@
     { label: "Репетитор", title: "Репетитор", category: "extra", start: "16:00", end: "17:00", weekdays: [] }
   ];
 
-  // ---------------------------------------------------------------- данные
   const STORE_KEY = "timebalance.frontend.v2";
   const DAY_START = 7 * 60;
 
@@ -155,7 +151,7 @@
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
     } catch (err) {
-      /* хранилище недоступно — работаем в памяти */
+
     }
   }
 
@@ -325,7 +321,6 @@
   let calcDays = [];
   let onboardStep = 0;
 
-  // ---------------------------------------------------------------- тема
   const DARK_QUERY = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
   function applyTheme() {
@@ -356,7 +351,6 @@
     });
   }
 
-  // ---------------------------------------------------------------- шкала
   function gaps(occupied, start, end) {
     const out = [];
     let cursor = start;
@@ -386,7 +380,6 @@
     return out;
   }
 
-  // Остаток работы: оценка минус уже потраченное время (план против факта).
   function remainingFor(task) {
     if (hasOwn(state.splits, task.id)) return state.splits[task.id];
     return Math.max(0, task.estimated - (task.spent || 0));
@@ -463,8 +456,6 @@
         if (need <= 0) break;
         const capw = w.to - w.from;
         if (capw < 15) continue;
-        // Если окно короче на считаные минуты, лучше взять следующее,
-        // чем оставить на шкале огрызок меньше 15 минут.
         if (need > capw && need - capw < 15) continue;
         const use = Math.min(capw, need);
         placed.push({ kind: "task", title: t.title, from: w.from, to: w.from + use, sourceId: t.id, category: "task" });
@@ -488,7 +479,6 @@
     };
   }
 
-  // ---------------------------------------------------------------- действия
   function splitCandidate(plan) {
     const worst = [...plan.unplaced].sort((a, b) => b.need - a.need).find((u) => u.task.splittable);
     if (worst) return worst.task;
@@ -585,7 +575,6 @@
     setScreen("today");
   }
 
-  // --- отметки выполнения и таймер «план против факта»
   async function toggleTaskDone(taskId) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -693,7 +682,6 @@
     });
   }
 
-  // --- удаление с возможностью отмены
   async function deleteTask(id) {
     const idx = state.tasks.findIndex((t) => t.id === id);
     if (idx < 0) return;
@@ -770,7 +758,6 @@
     });
   }
 
-  // ---------------------------------------------------------------- отрисовка
   function render() {
     applyTheme();
     applyLayout();
@@ -829,7 +816,6 @@
       sec.hidden = !active;
       if (active) {
         sec.classList.remove("screen-enter");
-        // перезапуск анимации перехода
         void sec.offsetWidth;
         sec.classList.add("screen-enter");
       }
@@ -949,7 +935,6 @@
     const card = $("#nowCard");
     const running = state.tasks.find((t) => t.startedAt);
 
-    // Идёт засечённое время — карточка показывает таймер.
     if (running) {
       card.innerHTML = `
         <p class="now-label">Идёт работа</p>
@@ -1131,7 +1116,6 @@
 
     timeline.innerHTML = parts.join("");
 
-    // Нажатие на блок открывает правку этого дела
     $$("[data-edit-id]", timeline).forEach((blk) => {
       const open = () => openSheet(blk.dataset.editKind === "task" ? "task" : "event", blk.dataset.editId);
       blk.addEventListener("click", open);
@@ -1144,7 +1128,6 @@
     });
   }
 
-  // --- список дел с редактированием и удалением
   function renderTaskList() {
     const list = $("#taskList");
     const tasks = state.tasks.slice().sort((a, b) => {
@@ -1204,7 +1187,6 @@
     $$("[data-del]", list).forEach((b) => b.addEventListener("click", () => deleteTask(b.dataset.del)));
   }
 
-  // --- список занятий
   function renderEventList() {
     const list = $("#eventList");
     const events = state.events.slice().sort((a, b) => toMin(a.start) - toMin(b.start));
@@ -1399,7 +1381,6 @@
     });
   }
 
-  // ---------------------------------------------------------------- лист добавления
   function renderTemplates() {
     const taskBox = $("#taskTemplates");
     taskBox.innerHTML = TASK_TEMPLATES.map((t) =>
@@ -1454,7 +1435,6 @@
     });
   }
 
-  // ------------------------------------------------- проверка окна «а если добавить?»
   const pluralDays = (n) => {
     const m10 = n % 10;
     const m100 = n % 100;
@@ -1787,7 +1767,6 @@
     else deleteEvent(id);
   }
 
-  // ---------------------------------------------------------------- онбординг
   const ONBOARDING_STEPS = [
     {
       art: "clock",
@@ -1854,7 +1833,6 @@
     save();
   }
 
-  // ---------------------------------------------------------------- вспомогательное
   function escapeHTML(value) {
     return String(value).replace(/[&<>"']/g, (ch) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -1887,7 +1865,6 @@
     toastTimer = window.setTimeout(() => el.classList.remove("is-visible"), action ? 6000 : 3200);
   }
 
-  // ---------------------------------------------------------------- события
   $$(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
@@ -2134,7 +2111,6 @@
     }
   });
 
-  // ---------------------------------------------------------------- старт
   applyTheme();
   applyLayout();
   renderTemplates();

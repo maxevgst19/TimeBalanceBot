@@ -1,8 +1,3 @@
-"""Редкие важные уведомления от сервера в чат MAX.
-
-Уведомления не отправляются на каждый пересчёт (DESIGN_STANDARD.md, раздел 8):
-одна причина — одно сообщение, дедупликация по таблице ``notifications_sent``.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -38,15 +33,15 @@ MONTHS_RU = (
 
 REMINDER_WINDOW_MIN = 15
 
-# «Протухшие» задания: старше STALE_DAYS дней — тихий вопрос вместо свалки.
+
 STALE_DAYS = 14
 STALE_MAX_PER_CYCLE = 3
 
-# Сколько минут заложить на сборы, когда напоминаем, когда вставать.
+
 WAKE_PREP_MIN = 20
 
 def _ru_date(iso_date: str) -> str:
-    """«2026-10-21» → «21 октября»."""
+
     try:
         day, month = int(iso_date[8:10]), int(iso_date[5:7])
         return f"{day} {MONTHS_RU[month - 1]}"
@@ -58,7 +53,7 @@ async def _send(bot, user_id: int, text: str, buttons=None) -> bool:
     try:
         await bot.send_message(user_id, text=text, format="html", buttons=buttons)
         return True
-    except Exception:  # noqa: BLE001 - сбой отправки не должен ронять планировщик
+    except Exception:
         logger.exception("Не удалось отправить уведомление пользователю %s", user_id)
         return False
 
@@ -94,7 +89,7 @@ async def check_user(
         conn, user, today, today + timedelta(days=1), settings.day_start, now=now
     )
 
-    # 1. Перегрузка дня — одно сообщение в сутки.
+
     overload = max(
         (c for c in plan.conflicts if c.shortage_min > 0),
         key=lambda c: c.shortage_min,
@@ -112,7 +107,7 @@ async def check_user(
             if await _send(bot, max_user_id, text):
                 await db.mark_notified(conn, user["id"], "overload", key)
 
-    # 2. Скоро начинается событие — напоминание один раз на экземпляр.
+
     for block in plan.blocks:
         if block.kind != "event":
             continue
@@ -131,8 +126,7 @@ async def check_user(
         if sent:
             await db.mark_notified(conn, user["id"], "event", key)
 
-    # 3. Выбранные городские мероприятия: утром в день проведения или за час,
-    # если событие начинается раньше 10:00.
+
     async with conn.execute(
         "SELECT id, title, starts_at, url FROM city_event_reminders WHERE user_id = ? "
         "AND starts_at >= ? AND starts_at <= ?",
@@ -154,7 +148,7 @@ async def check_user(
         if sent:
             await db.mark_notified(conn, user["id"], "city_event", reminder["id"])
 
-    # Заметки к дню приходят утром; к занятию — за 15 минут до начала.
+
     async with conn.execute(
         "SELECT id, day, event_id, text FROM notes WHERE user_id = ? AND day = ?",
         (user["id"], today.isoformat()),
@@ -169,7 +163,7 @@ async def check_user(
         if await _send(bot, max_user_id, message):
             await db.mark_notified(conn, user["id"], "note", note["id"])
 
-    # 3. Когда вставать: вечером — один раз на завтра, по первому делу дня.
+
     if now.hour >= settings.wake_hour:
         tomorrow = today + timedelta(days=1)
         key = tomorrow.isoformat()
@@ -185,7 +179,7 @@ async def check_user(
                 first_start = first.starts_at
                 title = first.title
                 if first.kind == "travel":
-                    # Дорога впереди: первое «настоящее» дело — следующий блок.
+
                     travel_min = first.minutes
                     nxt = next((b for b in busy[1:] if b.kind != "travel"), None)
                     if nxt is not None:
@@ -203,7 +197,7 @@ async def check_user(
                     if await _send(bot, max_user_id, text):
                         await db.mark_notified(conn, user["id"], "wake", key)
 
-    # 4. Протухшие задания: старше двух недель — спросить один раз на срок.
+
     tasks = await db.list_tasks(conn, user["id"])
     cutoff = (today - timedelta(days=STALE_DAYS)).isoformat()
     stale = [t for t in tasks if t["status"] != "done" and t["due_at"][:10] < cutoff]
@@ -249,10 +243,10 @@ async def run_notifier(
                     user = db.row_to_user(row)
                     try:
                         await check_user(bot, conn, settings, user)
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         await raw.rollback()
                         logger.exception("Ошибка проверки пользователя %s", user["id"])
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("Ошибка цикла уведомлений")
 
         try:

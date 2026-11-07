@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY miniapp ./miniapp
-COPY code.py ./
+COPY server.py ./
 
 EXPOSE 8000
-CMD ["python", "code.py"]
+CMD ["python", "server.py"]

@@ -1,4 +1,3 @@
-"""Проверка подписи данных запуска MAX и сессий приложения."""
 from __future__ import annotations
 
 import hashlib
@@ -69,7 +68,7 @@ def test_wrong_token_rejected():
 
 
 def test_duplicate_parameter_rejected():
-    """Дубликат меняет строку подписи — значит, так можно подделать данные."""
+
     raw = build_init_data() + "&auth_date=1"
     with pytest.raises(SecurityError):
         validate_init_data(raw, BOT_TOKEN, 86400)
