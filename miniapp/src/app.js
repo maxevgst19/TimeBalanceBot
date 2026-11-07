@@ -162,6 +162,12 @@
   let remoteMode = false;
   let serverPlan = null;
   let serverAlternatives = [];
+  let cityList = null;
+  let cityEvents = [];
+  let cityReminders = [];
+  let cityLoading = false;
+  let cityError = "";
+  let chosenCity = localStorage.getItem("timebalance.city.v1") || "";
   const apiBase = "/api/v1";
 
   async function api(path, method = "GET", body) {
@@ -294,6 +300,7 @@
       apiToken = (await response.json()).access_token;
       remoteMode = true;
       await reloadRemote();
+      if (screen === "city") await loadCityReminders();
       showToast("Данные синхронизированы");
     } catch (error) {
       remoteMode = false;
@@ -760,11 +767,12 @@
     if (screen === "week") renderWeek();
     if (screen === "planb") renderPlanB();
     if (screen === "profile") renderProfile();
+    if (screen === "city") renderCity();
   }
 
   function setScreen(next) {
     screen = next;
-    $$("#screen-today, #screen-week, #screen-planb, #screen-profile").forEach((sec) => {
+    $$("#screen-today, #screen-week, #screen-city, #screen-planb, #screen-profile").forEach((sec) => {
       const active = sec.id === `screen-${next}`;
       sec.hidden = !active;
       if (active) {
@@ -778,7 +786,81 @@
     if (remoteMode && (next === "today" || next === "planb")) {
       refreshServerPlan().then(render).catch((error) => showToast(error.message));
     }
+    if (next === "city") loadCitiesAndEvents();
     appRoot().scrollTop = 0;
+  }
+
+  async function loadCitiesAndEvents() {
+    if (!cityList) {
+      try {
+        const response = await fetch(`${apiBase}/city-events/cities`);
+        if (!response.ok) throw new Error("Не удалось загрузить города");
+        cityList = await response.json();
+        if (chosenCity && !cityList.some((item) => item.slug === chosenCity)) chosenCity = "";
+        cityError = "";
+      } catch (error) { cityError = error.message; renderCity(); return; }
+    }
+    renderCity();
+    if (chosenCity) await loadCityEvents();
+  }
+
+  async function loadCityEvents() {
+    cityLoading = true;
+    cityError = "";
+    renderCity();
+    try {
+      const response = await fetch(`${apiBase}/city-events?city=${encodeURIComponent(chosenCity)}`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || "Не удалось загрузить афишу");
+      }
+      cityEvents = await response.json();
+      if (remoteMode) await loadCityReminders();
+    } catch (error) { cityError = error.message; cityEvents = []; }
+    finally { cityLoading = false; renderCity(); }
+  }
+
+  async function loadCityReminders() {
+    if (!remoteMode) return;
+    try { cityReminders = await api("/city-events/reminders"); }
+    catch (error) { showToast(error.message); }
+    if (screen === "city") renderCity();
+  }
+
+  function cityDate(value) {
+    return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+  }
+
+  function renderCity() {
+    const select = $("#citySelect");
+    if (cityList) {
+      select.innerHTML = `<option value="">Выбери город</option>` + cityList.map((item) =>
+        `<option value="${escapeHTML(item.slug)}">${escapeHTML(item.name)}</option>`).join("");
+      select.value = chosenCity;
+    }
+    const box = $("#cityEvents");
+    if (cityError) {
+      box.innerHTML = `<div class="card city-empty"><p>${escapeHTML(cityError)}</p><button class="btn btn-outline" id="cityRetry" type="button">Повторить</button></div>`;
+      $("#cityRetry").addEventListener("click", loadCitiesAndEvents);
+      return;
+    }
+    if (!chosenCity) { box.innerHTML = `<div class="card city-empty">Выбери город — покажем ближайшие события.</div>`; return; }
+    if (cityLoading) { box.innerHTML = `<div class="card city-empty">Ищем мероприятия…</div>`; return; }
+    if (!cityEvents.length) { box.innerHTML = `<div class="card city-empty">На ближайшие недели событий пока не нашлось.</div>`; return; }
+    box.innerHTML = cityEvents.map((item) => {
+      const options = item.dates.map((date) => `<option value="${escapeHTML(date)}">${cityDate(date)}</option>`).join("");
+      const reminded = cityReminders.find((saved) => Number(saved.source_id) === item.id);
+      const details = item.url.startsWith("https://kudago.com/")
+        ? `<a class="city-link" href="${escapeHTML(item.url)}" target="_blank" rel="noopener noreferrer">Подробнее ↗</a>` : "";
+      return `<article class="card city-card">
+        <span class="city-stamp">АФИША / ${escapeHTML(chosenCity.toUpperCase())}</span>
+        <h2>${escapeHTML(item.title)}</h2>
+        <p class="city-meta">${escapeHTML(item.place || "Место уточняется")}${item.price ? ` · ${escapeHTML(item.price)}` : ""}</p>
+        <label for="cityDate-${item.id}">Дата события</label>
+        <select class="input" id="cityDate-${item.id}" data-city-date="${item.id}">${options}</select>
+        <div class="city-actions">${details}<button class="btn ${reminded ? "btn-outline" : "btn-primary"}" type="button" ${reminded ? `data-unremind="${escapeHTML(reminded.id)}"` : `data-remind="${item.id}"`} ${!remoteMode || !item.url ? "disabled" : ""}>${reminded ? "Убрать напоминание" : "Напомнить"}</button></div>
+      </article>`;
+    }).join("") + (!remoteMode ? `<p class="hint city-note">Напоминания в чате доступны при открытии через MAX.</p>` : "");
   }
 
   function appRoot() {
@@ -1651,6 +1733,43 @@
   // ---------------------------------------------------------------- события
   $$(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
+  });
+
+  $("#citySelect").addEventListener("change", (event) => {
+    chosenCity = event.target.value;
+    localStorage.setItem("timebalance.city.v1", chosenCity);
+    cityEvents = [];
+    cityError = "";
+    renderCity();
+    if (chosenCity) loadCityEvents();
+  });
+
+  $("#cityEvents").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-remind], [data-unremind]");
+    if (!button) return;
+    if (button.dataset.unremind) {
+      button.disabled = true;
+      try {
+        await api(`/city-events/reminders/${encodeURIComponent(button.dataset.unremind)}`, "DELETE");
+        await loadCityReminders();
+        showToast("Напоминание убрано");
+      } catch (error) { button.disabled = false; showToast(error.message); }
+      return;
+    }
+    const item = cityEvents.find((row) => String(row.id) === button.dataset.remind);
+    if (!item || !remoteMode) return;
+    if (!state.settings.notifications) { showToast("Включи уведомления в профиле"); return; }
+    const date = $(`#cityDate-${item.id}`)?.value;
+    if (!date) return;
+    button.disabled = true;
+    try {
+      await api("/city-events/reminders", "POST", {
+        source_id: item.id, city: chosenCity, starts_at: date,
+        title: item.title, url: item.url
+      });
+      await loadCityReminders();
+      showToast("Напомним в день мероприятия через бота MAX");
+    } catch (error) { button.disabled = false; showToast(error.message); }
   });
 
   $("#planbBack").addEventListener("click", () => setScreen("today"));

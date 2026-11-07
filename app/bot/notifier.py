@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from html import escape
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from psycopg_pool import AsyncConnectionPool
 
@@ -32,11 +33,13 @@ WEEKDAYS_RU = (
 REMINDER_WINDOW_MIN = 15
 
 
-async def _send(bot, user_id: int, text: str) -> None:
+async def _send(bot, user_id: int, text: str) -> bool:
     try:
         await bot.send_message(user_id, text=text, format="html")
+        return True
     except Exception:  # noqa: BLE001 - сбой отправки не должен ронять планировщик
         logger.exception("Не удалось отправить уведомление пользователю %s", user_id)
+        return False
 
 
 async def check_user(
@@ -71,8 +74,8 @@ async def check_user(
                 f"не хватает {plural_minutes(overload.shortage_min)}.\n"
                 "Открой мини-приложение и собери «План Б»."
             )
-            await _send(bot, max_user_id, text)
-            await db.mark_notified(conn, user["id"], "overload", key)
+            if await _send(bot, max_user_id, text):
+                await db.mark_notified(conn, user["id"], "overload", key)
 
     # 2. Скоро начинается событие — напоминание один раз на экземпляр.
     for block in plan.blocks:
@@ -84,13 +87,37 @@ async def check_user(
         key = f"{block.source_id}:{block.starts_at.isoformat()}"
         if await db.already_notified(conn, user["id"], "event", key):
             continue
-        await _send(
+        sent = await _send(
             bot,
             max_user_id,
             f"Через {plural_minutes(max(1, minutes_left))}: "
             f"<b>{block.title}</b> в {format_time(block.starts_at)}.",
         )
-        await db.mark_notified(conn, user["id"], "event", key)
+        if sent:
+            await db.mark_notified(conn, user["id"], "event", key)
+
+    # 3. Выбранные городские мероприятия: утром в день проведения или за час,
+    # если событие начинается раньше 10:00.
+    async with conn.execute(
+        "SELECT id, title, starts_at, url FROM city_event_reminders WHERE user_id = ? "
+        "AND starts_at >= ? AND starts_at <= ?",
+        (user["id"], (now.astimezone(timezone.utc) - timedelta(days=1)).isoformat(),
+         (now.astimezone(timezone.utc) + timedelta(days=2)).isoformat()),
+    ) as cur:
+        reminders = await cur.fetchall()
+    for reminder in reminders:
+        start = datetime.fromisoformat(reminder["starts_at"]).astimezone(tz)
+        morning = start.replace(hour=9, minute=0, second=0, microsecond=0)
+        send_at = min(morning, start - timedelta(hours=1))
+        if not send_at <= now < start:
+            continue
+        if await db.already_notified(conn, user["id"], "city_event", reminder["id"]):
+            continue
+        sent = await _send(bot, max_user_id,
+                           f"<b>Сегодня мероприятие:</b> {escape(reminder['title'])}\n"
+                           f"Начало: {format_time(start)}. <a href=\"{escape(reminder['url'], quote=True)}\">Подробнее</a>")
+        if sent:
+            await db.mark_notified(conn, user["id"], "city_event", reminder["id"])
 
 
 async def run_notifier(

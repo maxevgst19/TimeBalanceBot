@@ -1683,6 +1683,27 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
 :root.is-dark .row-item { border-color: #736454; }
 :root.is-dark .chip--tpl { background: #58452c; border-color: #96703b; color: #f5e2bb; }
 :root.is-dark .onboarding-card { background: #3f342a; box-shadow: 9px 12px 0 #171511; }
+
+/* Афиша — листки на той же доске, что расписание. */
+.nav-inner { gap: 3px; }
+.nav-btn { min-width: 0; font-size: 11px; }
+.city-picker { padding: 20px; margin: 8px 0 25px; transform: rotate(-.4deg); }
+.city-picker label, .city-card label { display: block; font-weight: 800; margin-bottom: 8px; }
+.city-events { display: grid; gap: 23px; padding: 4px 3px 24px; }
+.city-card { position: relative; padding: 25px 19px 18px; }
+.city-card:nth-child(odd) { transform: rotate(.45deg); }
+.city-card:nth-child(even) { transform: rotate(-.45deg); }
+.city-card::before { content: ""; position: absolute; width: 71px; height: 22px; top: -11px; left: 50%; transform: translateX(-50%) rotate(3deg); background: #f2bd55b5; clip-path: polygon(4% 0,100% 5%,96% 100%,0 94%); }
+.city-card h2 { font-family: Unbounded, Manrope, sans-serif; font-size: 17px; line-height: 1.35; letter-spacing: -.045em; margin: 11px 0; }
+.city-stamp { color: var(--primary); font-size: 10px; font-weight: 900; letter-spacing: .13em; }
+.city-meta { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+.city-card .input { width: 100%; }
+.city-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 17px; }
+.city-link { color: var(--primary); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.city-actions .btn:disabled { opacity: .55; cursor: default; }
+.city-empty { padding: 26px 20px; color: var(--muted); font-weight: 700; }
+.city-note { margin: 0 5px; }
+@media (max-width: 370px) { .nav-btn { font-size: 10px; } .nav-btn svg { width: 20px; height: 20px; } }
 </style>
 </head>
 <body>
@@ -1732,6 +1753,21 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
       <p class="screen-sub">Где нагрузка выше и сколько времени остаётся.</p>
     </header>
     <div class="week-list" id="weekList"></div>
+  </section>
+
+  <!-- ================= АФИША ГОРОДА ================= -->
+  <section id="screen-city" hidden>
+    <header class="screen-head">
+      <p class="screen-kicker">Афиша рядом</p>
+      <h1>Мероприятия города</h1>
+      <p class="screen-sub">Выбери город и найди, куда сходить. Напомним в день события.</p>
+    </header>
+    <div class="card city-picker">
+      <label for="citySelect">Мой город</label>
+      <select class="input" id="citySelect"><option value="">Загружаем города…</option></select>
+      <p class="hint">Афиша предоставлена KudaGo. Даты и детали проверяй у организатора.</p>
+    </div>
+    <div id="cityEvents" class="city-events" aria-live="polite"></div>
   </section>
 
   <!-- ================= ПЛАН Б ================= -->
@@ -1829,6 +1865,12 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
         <path d="M3 9h18M9 9v12M15 9v12" stroke="currentColor" stroke-width="1.6"/>
       </svg>
       Неделя
+    </button>
+    <button class="nav-btn" type="button" data-screen="city">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h16v13H4zM7 4v6M17 4v6M4 11h16M9 15h2M14 15h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      Афиша
     </button>
     <button class="nav-btn" type="button" data-screen="profile">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1985,7 +2027,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
   <button type="button" onclick="location.reload()">Повторить</button>
 </div>
 <noscript><div class="noscript">Для работы TimeBalance нужен JavaScript. Включи его в браузере.</div></noscript>
-<script src="app.min.js?v=282b914e57" defer></script>
+<script src="app.min.js?v=57eaccec24" defer></script>
 <script>
 (function () {
   "use strict";
@@ -1999,7 +2041,7 @@ h1 { max-width: 86%; font-size: clamp(28px, 8vw, 42px); font-weight: 900; line-h
     if (tries >= 2) { banner(); return; }
     tries += 1;
     var s = document.createElement("script");
-    s.src = "app.min.js?v=282b914e57&r=" + tries;
+    s.src = "app.min.js?v=57eaccec24&r=" + tries;
     s.onload = function () { if (!window.__tbReady) banner(); };
     s.onerror = retry;
     document.body.appendChild(s);

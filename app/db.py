@@ -107,6 +107,18 @@ CREATE TABLE IF NOT EXISTS notifications_sent (
     sent_at TEXT NOT NULL,
     PRIMARY KEY (user_id, kind, key)
 );
+
+CREATE TABLE IF NOT EXISTS city_event_reminders (
+    id        TEXT PRIMARY KEY,
+    user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_id BIGINT NOT NULL,
+    city      TEXT NOT NULL,
+    title     TEXT NOT NULL,
+    starts_at TEXT NOT NULL,
+    url       TEXT NOT NULL,
+    UNIQUE (user_id, source_id, starts_at)
+);
+CREATE INDEX IF NOT EXISTS idx_city_reminders_user ON city_event_reminders(user_id, starts_at);
 """
 
 

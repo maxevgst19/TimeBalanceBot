@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from . import db
 from .config import Settings
 from .deps import ApiException
-from .routers import auth, events, planning, profile, tasks
+from .routers import auth, city_events, events, planning, profile, tasks
 from .security import SecurityError
 
 logger = logging.getLogger(__name__)
@@ -129,7 +129,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         status, code, message = _http_detail(exc)
         return JSONResponse(status_code=status, content={"code": code, "message": message})
 
-    for router in (auth.router, profile.router, events.router, tasks.router, planning.router):
+    for router in (auth.router, profile.router, events.router, tasks.router, planning.router, city_events.router):
         app.include_router(router, prefix=API_PREFIX)
 
     @app.get("/health", tags=["Service"])

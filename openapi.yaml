@@ -15,6 +15,7 @@ tags:
   - name: Tasks
   - name: Planning
   - name: Data
+  - name: City events
 security:
   - bearerAuth: []
 paths:
@@ -265,6 +266,62 @@ paths:
               schema: { $ref: '#/components/schemas/Plan' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /city-events/cities:
+    get:
+      tags: [City events]
+      security: []
+      summary: Города, доступные в афише KudaGo
+      responses:
+        '200': { description: Список городов }
+        '503': { description: Источник временно недоступен }
+  /city-events:
+    get:
+      tags: [City events]
+      security: []
+      summary: Ближайшие мероприятия выбранного города
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Список мероприятий с датами и ссылками на источник }
+        '503': { description: Источник временно недоступен }
+  /city-events/reminders:
+    get:
+      tags: [City events]
+      summary: Напоминания текущего пользователя
+      responses:
+        '200': { description: Список напоминаний }
+    post:
+      tags: [City events]
+      summary: Добавить напоминание о выбранной дате мероприятия
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_id, city, starts_at, title, url]
+              properties:
+                source_id: { type: integer }
+                city: { type: string }
+                starts_at: { type: string, format: date-time }
+                title: { type: string }
+                url: { type: string, format: uri }
+      responses:
+        '201': { description: Напоминание создано }
+  /city-events/reminders/{reminder_id}:
+    delete:
+      tags: [City events]
+      summary: Удалить напоминание
+      parameters:
+        - name: reminder_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Напоминание удалено }
   /me/data:
     delete:
       tags: [Data]

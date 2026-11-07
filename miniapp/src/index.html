@@ -59,6 +59,21 @@
     <div class="week-list" id="weekList"></div>
   </section>
 
+  <!-- ================= АФИША ГОРОДА ================= -->
+  <section id="screen-city" hidden>
+    <header class="screen-head">
+      <p class="screen-kicker">Афиша рядом</p>
+      <h1>Мероприятия города</h1>
+      <p class="screen-sub">Выбери город и найди, куда сходить. Напомним в день события.</p>
+    </header>
+    <div class="card city-picker">
+      <label for="citySelect">Мой город</label>
+      <select class="input" id="citySelect"><option value="">Загружаем города…</option></select>
+      <p class="hint">Афиша предоставлена KudaGo. Даты и детали проверяй у организатора.</p>
+    </div>
+    <div id="cityEvents" class="city-events" aria-live="polite"></div>
+  </section>
+
   <!-- ================= ПЛАН Б ================= -->
   <section id="screen-planb" hidden>
     <button class="back-btn" id="planbBack" type="button">
@@ -154,6 +169,12 @@
         <path d="M3 9h18M9 9v12M15 9v12" stroke="currentColor" stroke-width="1.6"/>
       </svg>
       Неделя
+    </button>
+    <button class="nav-btn" type="button" data-screen="city">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h16v13H4zM7 4v6M17 4v6M4 11h16M9 15h2M14 15h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      Афиша
     </button>
     <button class="nav-btn" type="button" data-screen="profile">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">

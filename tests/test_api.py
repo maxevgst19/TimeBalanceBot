@@ -8,6 +8,7 @@ import os
 import time
 import urllib.parse
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import psycopg
@@ -17,9 +18,46 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.routers import city_events
 
 BOT_TOKEN = "1234567890:TEST_TOKEN_FOR_API_TESTS"
 DAY = "2026-11-03"
+
+
+def test_city_events_and_reminder(client, auth, monkeypatch):
+    start = datetime.now(timezone.utc) + timedelta(days=2)
+
+    async def fake_fetch(path, params, ttl):
+        if path == "/locations/":
+            return [{"slug": "msk", "name": "Москва"}]
+        if path == "/events/42/":
+            return {"id": 42, "title": "Фестиваль", "dates": [{"start": int(start.timestamp())}],
+                    "site_url": "https://kudago.com/msk/event/festival/"}
+        return {"results": [{
+            "id": 42, "title": "Фестиваль", "dates": [{"start": int(start.timestamp())}],
+            "site_url": "https://kudago.com/msk/event/festival/", "price": "бесплатно",
+            "place": {"title": "Парк"},
+        }]}
+
+    monkeypatch.setattr(city_events, "_fetch", fake_fetch)
+    cities = client.get("/api/v1/city-events/cities")
+    assert cities.json() == [{"slug": "msk", "name": "Москва"}]
+    events = client.get("/api/v1/city-events", params={"city": "msk"})
+    assert events.status_code == 200
+    assert events.json()[0]["title"] == "Фестиваль"
+
+    payload = {
+        "source_id": 42, "city": "msk", "starts_at": start.isoformat(),
+        "title": "Фестиваль", "url": "https://kudago.com/msk/event/festival/",
+    }
+    assert client.post("/api/v1/city-events/reminders", json=payload).status_code == 401
+    created = client.post("/api/v1/city-events/reminders", headers=auth, json=payload)
+    assert created.status_code == 201, created.text
+    reminder_id = created.json()["id"]
+    listed = client.get("/api/v1/city-events/reminders", headers=auth)
+    assert [item["id"] for item in listed.json()] == [reminder_id]
+    deleted = client.delete(f"/api/v1/city-events/reminders/{reminder_id}", headers=auth)
+    assert deleted.status_code == 204
 
 
 def _sign(params: dict[str, str], token: str = BOT_TOKEN) -> str:
